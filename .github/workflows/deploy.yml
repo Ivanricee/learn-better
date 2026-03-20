@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Esto fuerza a GitHub a usar Node 24 para que no te dé errores de versión
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -23,18 +22,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # --- ESTE ES EL PASO NUEVO QUE SOLUCIONA TU ERROR ---
-      - name: Downcase repo name
-        run: |
-          echo "IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' >> $GITHUB_ENV
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # Aquí usamos la variable ya convertida a minúsculas
-          tags: ${{ env.IMAGE_NAME }}:latest
+          # Escribimos la ruta a mano en minúsculas para evitar errores
+          tags: ghcr.io/ivanricee/learn-better:latest
 
       - name: Trigger Dokploy Deploy
         run: |
