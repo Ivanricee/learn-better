@@ -1,8 +1,8 @@
-
 import { getVectorStore } from "@/app/src/lib/vectorStore";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
+  //return NextResponse.json({ ok: true, message: "Ruta funcionando" });
   const { question } = await req.json();
 
   const vectorStore = await getVectorStore();

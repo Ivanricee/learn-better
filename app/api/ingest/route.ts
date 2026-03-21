@@ -1,13 +1,14 @@
-
 import { getVectorStore } from "@/app/src/lib/vectorStore";
 import { NextResponse } from "next/server";
 
 export async function POST() {
+  //return NextResponse.json({ ok: true, message: "Ruta funcionando" });
   const vectorStore = await getVectorStore();
 
   await vectorStore.addDocuments([
     {
-      pageContent: "LangChain es un framework para construir aplicaciones con LLMs.",
+      pageContent:
+        "LangChain es un framework para construir aplicaciones con LLMs.",
       metadata: { source: "prueba", page: 1 },
     },
     {
