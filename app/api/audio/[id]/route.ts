@@ -2,9 +2,10 @@ import fs from "fs/promises";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const filePath = `/tmp/${params.id}.opus`;
+  const { id } = await params;
+  const filePath = `/tmp/${id}.opus`;
 
   try {
     const file = await fs.readFile(filePath);
