@@ -3,7 +3,7 @@ import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 
 export async function getVectorStore() {
   const embeddings = new GoogleGenerativeAIEmbeddings({
-    modelName: "embedding-001",
+    modelName: "gemini-embedding-001",
     apiKey: process.env.GOOGLE_API_KEY!,
   });
 
