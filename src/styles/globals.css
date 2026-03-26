@@ -3,7 +3,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Trainery Dark Theme - Night Workspace Palette */
 :root {
   /* Backgrounds - warm dark tones from DESIGN_SYSTEM_1 */
   --background-elevated: #363430;
@@ -88,8 +87,6 @@
   --font-mono: var(--font-mono);
 
   --color-background: var(--background);
-  --color-background-elevated: var(--background-elevated);
-  --color-background-panel: var(--background-panel);
   --color-foreground: var(--foreground);
   --color-foreground-secondary: var(--foreground-secondary);
   --color-foreground-tertiary: var(--foreground-tertiary);
