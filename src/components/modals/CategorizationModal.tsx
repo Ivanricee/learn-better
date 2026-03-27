@@ -4,7 +4,14 @@ import { useState } from "react";
 import { X, FileText, AlertTriangle, Video, Music, Globe } from "lucide-react";
 
 import type { FileType } from "@/lib/types";
-import { categories, detectedTopics } from "@/lib/mock-data";
+import { detectedTopics } from "@/lib/mock-data";
+import { useCategoryStore } from "@/lib/stores/zustand-store";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CategorizationModalProps {
   isOpen: boolean;
@@ -15,21 +22,13 @@ interface CategorizationModalProps {
   preselectedCategoryId?: number;
 }
 
-const getFileIcon = (type: FileType) => {
-  switch (type) {
-    case "pdf":
-    case "pdf-scanned":
-    case "doc":
-      return FileText;
-    case "video":
-      return Video;
-    case "audio":
-      return Music;
-    case "url":
-      return Globe;
-    default:
-      return FileText;
-  }
+const fileIconMap: Record<string, React.ElementType> = {
+  pdf: FileText,
+  "pdf-scanned": FileText,
+  doc: FileText,
+  video: Video,
+  audio: Music,
+  url: Globe,
 };
 
 // Check if content might be sensitive (medicine, law, finance)
@@ -58,15 +57,15 @@ export function CategorizationModal({
   fileType,
   preselectedCategoryId,
 }: CategorizationModalProps) {
+  const categories = useCategoryStore((state) => state.categories);
+  const suggestedCategoryId = categories[0]?.id ?? null;
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    preselectedCategoryId || 1,
+    preselectedCategoryId ?? suggestedCategoryId,
   );
   const [isNewCategory, setIsNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
 
-  if (!isOpen) return null;
-
-  const FileIcon = getFileIcon(fileType);
+  const FileIconComponent = fileIconMap[fileType] ?? FileText;
   const showSensitiveWarning = isSensitiveContent(filename);
 
   const handleConfirm = () => {
@@ -81,47 +80,49 @@ export function CategorizationModal({
     if (id === null) {
       setIsNewCategory(true);
       setSelectedCategoryId(null);
+      setNewCategoryName("");
     } else {
       setIsNewCategory(false);
       setSelectedCategoryId(id);
+      setNewCategoryName("");
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/60" />
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-w-lg p-6 rounded-2xl bg-card border border-border ring-0 text-foreground gap-0"
+      >
+        <DialogTitle className="sr-only">Categorizar archivo</DialogTitle>
 
-      {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 p-6 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
         {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1 rounded-lg text-[var(--foreground-tertiary)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors duration-150"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <DialogClose asChild>
+          <button className="absolute top-4 right-4 p-1 rounded-lg text-foreground-tertiary hover:text-foreground hover:bg-background-elevated transition-colors duration-150">
+            <X className="w-5 h-5" />
+          </button>
+        </DialogClose>
 
         {/* File info */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-lg bg-[var(--background-elevated)]">
-            <FileIcon className="w-5 h-5 text-[var(--primary)]" />
+          <div className="p-2 rounded-lg bg-background-elevated">
+            <FileIconComponent className="w-5 h-5 text-primary" />
           </div>
-          <span className="font-medium text-[var(--foreground)] truncate">
+          <span className="font-medium text-foreground truncate">
             {filename}
           </span>
         </div>
 
         {/* Detected topics */}
         <div className="mb-6">
-          <p className="text-sm text-[var(--foreground-secondary)] mb-2">
+          <p className="text-sm text-foreground-secondary mb-2">
             La IA detectó:
           </p>
           <div className="flex flex-wrap gap-2">
             {detectedTopics.map((topic) => (
               <span
                 key={topic}
-                className="px-3 py-1 rounded-full text-xs bg-[var(--background-elevated)] border border-[var(--border-subtle)] text-[var(--foreground-secondary)]"
+                className="px-3 py-1 rounded-full text-xs bg-background-elevated border border-border-subtle text-foreground-secondary"
               >
                 {topic}
               </span>
@@ -131,29 +132,31 @@ export function CategorizationModal({
 
         {/* Category selection */}
         <div className="mb-4">
-          <p className="text-sm text-[var(--foreground-secondary)] mb-3">
+          <p className="text-sm text-foreground-secondary mb-3">
             Categoría sugerida:
           </p>
           <div className="flex flex-wrap gap-2">
             {/* Suggested category (first one) */}
-            <button
-              onClick={() => handleCategorySelect(1)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-150 ${
-                selectedCategoryId === 1 && !isNewCategory
-                  ? "border-[var(--primary)] bg-[var(--primary-muted)] text-[var(--primary)]"
-                  : "border-[var(--border)] text-[var(--foreground-secondary)] hover:border-[var(--primary)]"
-              }`}
-            >
-              {categories[0].nombre}
-            </button>
+            {categories[0] && (
+              <button
+                onClick={() => handleCategorySelect(categories[0].id)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-150 ${
+                  selectedCategoryId === categories[0].id && !isNewCategory
+                    ? "border-primary bg-primary-muted text-primary"
+                    : "border-border text-foreground-secondary hover:border-primary"
+                }`}
+              >
+                {categories[0].nombre}
+              </button>
+            )}
 
             {/* New category option */}
             <button
               onClick={() => handleCategorySelect(null)}
               className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-150 ${
                 isNewCategory
-                  ? "border-[var(--primary)] bg-[var(--primary-muted)] text-[var(--primary)]"
-                  : "border-[var(--border)] text-[var(--foreground-secondary)] hover:border-[var(--primary)]"
+                  ? "border-primary bg-primary-muted text-primary"
+                  : "border-border text-foreground-secondary hover:border-primary"
               }`}
             >
               Nueva categoría...
@@ -166,8 +169,9 @@ export function CategorizationModal({
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleConfirm()}
               placeholder="Nombre de la categoría"
-              className="mt-3 w-full px-4 py-2 rounded-xl bg-[var(--input)] border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-tertiary)] focus:border-[var(--primary)] outline-none transition-colors duration-150"
+              className="mt-3 w-full px-4 py-2 rounded-xl bg-input border border-border text-foreground placeholder:text-foreground-tertiary focus:border-primary outline-none transition-colors duration-150"
               autoFocus
             />
           )}
@@ -175,9 +179,7 @@ export function CategorizationModal({
 
         {/* Other categories */}
         <div className="mb-6">
-          <p className="text-sm text-[var(--foreground-tertiary)] mb-2">
-            O elige otra:
-          </p>
+          <p className="text-sm text-foreground-tertiary mb-2">O elige otra:</p>
           <div className="flex flex-wrap gap-2">
             {categories.slice(1).map((category) => (
               <button
@@ -185,8 +187,8 @@ export function CategorizationModal({
                 onClick={() => handleCategorySelect(category.id)}
                 className={`px-3 py-1.5 rounded-full text-xs border transition-all duration-150 ${
                   selectedCategoryId === category.id
-                    ? "border-[var(--primary)] bg-[var(--primary-muted)] text-[var(--primary)]"
-                    : "border-[var(--border)] text-[var(--foreground-secondary)] hover:border-[var(--primary)]"
+                    ? "border-primary bg-primary-muted text-primary"
+                    : "border-border text-foreground-secondary hover:border-primary"
                 }`}
               >
                 {category.nombre}
@@ -197,10 +199,10 @@ export function CategorizationModal({
 
         {/* Sensitive content warning */}
         {showSensitiveWarning && (
-          <div className="mb-6 p-3 rounded-xl bg-[var(--secondary-muted)] border border-[var(--secondary)]">
+          <div className="mb-6 p-3 rounded-xl bg-secondary-muted border border-secondary">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-[var(--secondary)] flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-[var(--secondary)]">
+              <AlertTriangle className="w-4 h-4 text-secondary flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-secondary">
                 Este material puede contener información sensible. Las
                 respuestas incluirán un aviso automático.
               </p>
@@ -210,21 +212,20 @@ export function CategorizationModal({
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-sm font-medium border border-[var(--border)] text-[var(--foreground-secondary)] hover:border-[var(--border-hover)] hover:text-[var(--foreground)] transition-all duration-150"
-          >
-            Cancelar
-          </button>
+          <DialogClose asChild>
+            <button className="px-4 py-2 rounded-xl text-sm font-medium border border-border text-foreground-secondary hover:border-border-hover hover:text-foreground transition-all duration-150">
+              Cancelar
+            </button>
+          </DialogClose>
           <button
             onClick={handleConfirm}
             disabled={isNewCategory && !newCategoryName.trim()}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--primary)] text-[var(--background)] hover:bg-[var(--primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-background hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
           >
             Confirmar
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
