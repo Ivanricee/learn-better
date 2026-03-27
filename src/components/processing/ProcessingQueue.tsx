@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import type { ProcessingItem, FileType } from "@/lib/types";
-import { useProcessingStore } from "@/src/lib/stores/zustand-store";
+import { useProcessingStore } from "@/lib/stores/zustand-store";
 
 const getFileIcon = (type: FileType) => {
   switch (type) {

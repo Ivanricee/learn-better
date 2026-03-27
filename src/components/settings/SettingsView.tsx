@@ -1,6 +1,6 @@
 "use client";
 
-import { useAppStore } from "@/src/lib/stores/zustand-store";
+import { useAppStore } from "@/lib/stores/zustand-store";
 import { ArrowLeft, Link2Off, FileText, FileCode, User } from "lucide-react";
 
 const integrations = [
