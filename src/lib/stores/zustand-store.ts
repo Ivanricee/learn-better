@@ -1,12 +1,104 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
+  Category,
   ViewType,
   ActivityType,
   RightPanelTab,
   ProcessingItem,
   TutorMessage,
 } from "../types";
+import { categories as mockCategories } from "../mock-data";
+
+interface CreateCategoryInput {
+  nombre: string;
+  temario?: string[];
+}
+
+interface UpdateCategoryInput {
+  nombre?: string;
+  progreso?: number;
+  temas?: number;
+  temario?: string[];
+}
+
+interface CategoryState {
+  categories: Category[];
+  createCategory: (input: CreateCategoryInput) => Category | null;
+  updateCategory: (id: number, updates: UpdateCategoryInput) => void;
+  deleteCategory: (id: number) => void;
+}
+
+export const useCategoryStore = create<CategoryState>()(
+  persist(
+    (set) => ({
+      categories: [...mockCategories],
+
+      createCategory: ({ nombre, temario }) => {
+        const normalizedName = nombre.trim();
+
+        if (!normalizedName) {
+          return null;
+        }
+
+        let createdCategory: Category | null = null;
+
+        set((state) => {
+          const nextId =
+            state.categories.length > 0
+              ? Math.max(...state.categories.map((category) => category.id)) + 1
+              : 1;
+
+          createdCategory = {
+            id: nextId,
+            nombre: normalizedName,
+            temas: temario?.length ?? 0,
+            progreso: 0,
+          };
+
+          return {
+            categories: [...state.categories, createdCategory],
+          };
+        });
+
+        return createdCategory;
+      },
+
+      updateCategory: (id, updates) =>
+        set((state) => ({
+          categories: state.categories.map((category) => {
+            if (category.id !== id) {
+              return category;
+            }
+
+            const { temario, nombre, ...rest } = updates;
+
+            const nextTemas =
+              temario !== undefined
+                ? temario.length
+                : typeof rest.temas === "number"
+                  ? rest.temas
+                  : category.temas;
+
+            return {
+              ...category,
+              ...rest,
+              temas: nextTemas,
+              nombre: nombre?.trim() || category.nombre,
+            };
+          }),
+        })),
+
+      deleteCategory: (id) =>
+        set((state) => ({
+          categories: state.categories.filter((category) => category.id !== id),
+        })),
+    }),
+    {
+      name: "trainery-categories-storage",
+    },
+  ),
+);
 
 // App navigation store
 interface AppState {
