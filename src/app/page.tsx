@@ -5,12 +5,16 @@ import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/layout/Topbar";
 import { DropZone } from "@/components/home/DropZone";
 import { CategoryGrid } from "@/components/home/CategoryGrid";
-import { ProcessingQueue } from "@/src/components/processing/ProcessingQueue";
+import { ProcessingQueue } from "@/components/processing/ProcessingQueue";
 import { CategorizationModal } from "@/components/modals/CategorizationModal";
 import { ProgressGlobal } from "@/components/progress/ProgressGlobal";
 import { SettingsView } from "../components/settings/SettingsView";
-import { useAppStore, useProcessingStore } from "@/lib/stores/zustand-store";
-import { categories, getProcessingSteps } from "@/lib/mock-data";
+import {
+  useAppStore,
+  useCategoryStore,
+  useProcessingStore,
+} from "@/lib/stores/zustand-store";
+import { getProcessingSteps } from "@/lib/mock-data";
 import type { FileType } from "@/lib/types";
 
 function getFileType(file: File): FileType {
@@ -41,6 +45,8 @@ export default function Home() {
   const router = useRouter();
   const { currentView, setCategory } = useAppStore();
   const { addToQueue } = useProcessingStore();
+  const categories = useCategoryStore((state) => state.categories);
+  const createCategory = useCategoryStore((state) => state.createCategory);
 
   const [showCategorizationModal, setShowCategorizationModal] = useState(false);
   const [pendingFile, setPendingFile] = useState<{
@@ -70,6 +76,10 @@ export default function Home() {
     categoryId: number | null,
     newCategoryName?: string,
   ) => {
+    if (categoryId === null && newCategoryName) {
+      createCategory({ nombre: newCategoryName });
+    }
+
     if (pendingFile) {
       // Add to processing queue
       addToQueue({
@@ -88,14 +98,8 @@ export default function Home() {
     router.push(`/category/${id}`);
   };
 
-  const handleNewCategory = () => {
-    // For demo, just show the modal with empty state
-    setPendingFile({ name: "Nuevo material", type: "doc" });
-    setShowCategorizationModal(true);
-  };
-
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--background)]">
+    <div className="min-h-screen flex flex-col bg-background">
       <Topbar />
 
       <main className="flex-1">
@@ -108,7 +112,6 @@ export default function Home() {
             <CategoryGrid
               categories={categories}
               onCategoryClick={handleCategoryClick}
-              onNewCategory={handleNewCategory}
             />
           </div>
         )}
