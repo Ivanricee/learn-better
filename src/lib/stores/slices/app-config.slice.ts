@@ -1,0 +1,66 @@
+import type { StateCreator } from "zustand";
+
+import type { ActivityType, RightPanelTab, ViewType } from "../../types";
+
+export type AppConfigSlice = {
+  currentView: ViewType;
+  currentCategoryId: number | null;
+  currentThemeId: string | null;
+  currentActivity: ActivityType;
+  rightPanelOpen: boolean;
+  rightPanelTab: RightPanelTab;
+  sidebarWidth: number;
+  temarioGenerated: boolean;
+
+  setView: (view: ViewType) => void;
+  setCategory: (id: number | null) => void;
+  setTheme: (id: string | null) => void;
+  setActivity: (activity: ActivityType) => void;
+  toggleRightPanel: () => void;
+  setRightPanelTab: (tab: RightPanelTab) => void;
+  setSidebarWidth: (width: number) => void;
+  setTemarioGenerated: (generated: boolean) => void;
+  resetToHome: () => void;
+};
+
+export type AppStore = AppConfigSlice;
+
+export const createAppConfigSlice: StateCreator<
+  AppStore,
+  [],
+  [],
+  AppConfigSlice
+> = (set) => ({
+  currentView: "home",
+  currentCategoryId: null,
+  currentThemeId: null,
+  currentActivity: null,
+  rightPanelOpen: false,
+  rightPanelTab: "tutor",
+  sidebarWidth: 240,
+  temarioGenerated: false,
+
+  setView: (view) => set({ currentView: view }),
+  setCategory: (id) =>
+    set({
+      currentCategoryId: id,
+      currentThemeId: null,
+      currentActivity: "theme",
+    }),
+  setTheme: (id) => set({ currentThemeId: id, currentActivity: "theme" }),
+  setActivity: (activity) => set({ currentActivity: activity }),
+  toggleRightPanel: () =>
+    set((state) => ({ rightPanelOpen: !state.rightPanelOpen })),
+  setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
+  setSidebarWidth: (width) =>
+    set({ sidebarWidth: Math.min(320, Math.max(200, width)) }),
+  setTemarioGenerated: (generated) => set({ temarioGenerated: generated }),
+  resetToHome: () =>
+    set({
+      currentView: "home",
+      currentCategoryId: null,
+      currentThemeId: null,
+      currentActivity: null,
+      rightPanelOpen: false,
+    }),
+});
