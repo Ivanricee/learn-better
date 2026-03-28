@@ -105,10 +105,6 @@ export default function Home() {
       <main className="flex-1">
         {currentView === "home" && (
           <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-            <DropZone
-              onFileAccepted={handleFileAccepted}
-              onUrlSubmit={handleUrlSubmit}
-            />
             <CategoryGrid
               categories={categories}
               onCategoryClick={handleCategoryClick}
