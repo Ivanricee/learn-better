@@ -5,7 +5,14 @@ import {
   createProcessingSlice,
   type CategoryStore,
 } from "./slices/categories.slice";
-import { createAppConfigSlice, type AppStore } from "./slices/app-config.slice";
+import {
+  createAppConfigSlice,
+  type AppConfigSlice,
+} from "./slices/app-config.slice";
+import {
+  createResourcesSlice,
+  type ResourcesSlice,
+} from "./slices/resources.slice";
 import { createTutorSlice, type TutorStore } from "./slices/tutor.slice";
 
 export const useCategoryStore = create<CategoryStore>()(
@@ -23,10 +30,13 @@ export const useCategoryStore = create<CategoryStore>()(
 
 export const useProcessingStore = useCategoryStore;
 
+export type AppStore = AppConfigSlice & ResourcesSlice;
+
 export const useAppStore = create<AppStore>()(
   persist(
     (...a) => ({
       ...createAppConfigSlice(...a),
+      ...createResourcesSlice(...a),
     }),
     {
       name: "trainery-app-storage",
@@ -38,3 +48,6 @@ export const useAppStore = create<AppStore>()(
 export const useTutorStore = create<TutorStore>()((...a) => ({
   ...createTutorSlice(...a),
 }));
+
+export const useResourcesStore = useAppStore;
+export const useResourceStore = useResourcesStore;
