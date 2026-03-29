@@ -128,6 +128,8 @@ export type ResourceType =
   | "audio"
   | "video"
   | "text"
+  | "image"
+  | "markdown"
   | "url";
 export type ResourceStatus =
   | "queued"

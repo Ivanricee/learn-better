@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   X,
   Upload,
@@ -11,9 +13,17 @@ import {
   Music,
   Image,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { useResourcesStore, useAppStore } from "@/lib/stores/zustand-store";
 import type { ResourceType } from "@/lib/types";
+import {
+  uploadUrlSchema,
+  type UploadUrlFormValues,
+  validateFile,
+  ACCEPTED_MIME_TYPES,
+  FILE_SIZE_LABELS,
+} from "./schemas/upload.schema";
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -24,15 +34,18 @@ interface UploadModalProps {
 function getResourceType(file: File): ResourceType {
   const ext = file.name.split(".").pop()?.toLowerCase();
   if (file.type.includes("pdf") || ext === "pdf") return "pdf";
+  if (ext === "md") return "markdown";
+  if (
+    file.type.startsWith("image/") ||
+    ["jpg", "jpeg", "png", "webp", "avif"].includes(ext || "")
+  )
+    return "image";
   if (
     file.type.includes("audio") ||
-    ["mp3", "wav", "ogg", "m4a"].includes(ext || "")
+    ["mp3", "wav", "ogg", "m4a", "flac"].includes(ext || "")
   )
     return "audio";
-  if (
-    file.type.includes("video") ||
-    ["mp4", "webm", "mov", "avi"].includes(ext || "")
-  )
+  if (file.type.includes("video") || ["mp4", "webm", "mov"].includes(ext || ""))
     return "video";
   return "text";
 }
@@ -40,6 +53,7 @@ function getResourceType(file: File): ResourceType {
 function getUrlResourceType(url: string): ResourceType {
   if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
   if (url.includes("tiktok.com")) return "tiktok";
+  if (url.includes("instagram.com")) return "url";
   return "url";
 }
 
@@ -54,6 +68,11 @@ function getFilenameFromUrl(url: string): string {
       const username = pathParts.find((p) => p.startsWith("@")) || "@creator";
       return `TikTok ${username}`;
     }
+    if (url.includes("instagram.com")) {
+      const pathParts = urlObj.pathname.split("/").filter(Boolean);
+      const username = pathParts[0] ? `@${pathParts[0]}` : "";
+      return `Instagram ${username}`.trim();
+    }
     return urlObj.hostname.replace("www.", "");
   } catch {
     return "Enlace externo";
@@ -64,49 +83,76 @@ export function UploadModal({ isOpen, onClose, categoryId }: UploadModalProps) {
   const { addResource, updateResourceStatus, updateResourceProgress } =
     useResourcesStore();
   const { setLeftPanelTab } = useAppStore();
-  const [urlInput, setUrlInput] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<
     { name: string; type: ResourceType }[]
   >([]);
+  const [dropError, setDropError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset: resetUrl,
+    formState: { errors: urlErrors },
+  } = useForm<UploadUrlFormValues>({
+    resolver: zodResolver(uploadUrlSchema),
+    mode: "onSubmit",
+  });
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles = acceptedFiles.map((file) => ({
-      name: file.name,
-      type: getResourceType(file),
-    }));
-    setPendingFiles((prev) => [...prev, ...newFiles]);
+    setDropError(null);
+    const newFiles: { name: string; type: ResourceType }[] = [];
+    const fileErrors: string[] = [];
+
+    for (const file of acceptedFiles) {
+      const error = validateFile(file);
+      if (error) {
+        fileErrors.push(`${file.name}: ${error}`);
+      } else {
+        newFiles.push({ name: file.name, type: getResourceType(file) });
+      }
+    }
+
+    if (fileErrors.length > 0) {
+      setDropError(fileErrors.join(" · "));
+    }
+
+    if (newFiles.length > 0) {
+      setPendingFiles((prev) => [...prev, ...newFiles]);
+    }
+  }, []);
+
+  const onDropRejected = useCallback(() => {
+    setDropError(
+      "Formato no compatible. Revisa los tipos y tamaños permitidos.",
+    );
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      "application/pdf": [".pdf"],
-      "audio/*": [".mp3", ".wav", ".ogg", ".m4a"],
-      "video/*": [".mp4", ".webm", ".mov"],
-      "text/plain": [".txt"],
-      "application/msword": [".doc", ".docx"],
-    },
+    onDropRejected,
+    onDragEnter: () => setDropError(null),
+    accept: ACCEPTED_MIME_TYPES,
   });
 
-  const handleAddUrl = () => {
-    if (!urlInput.trim()) return;
-
-    const type = getUrlResourceType(urlInput);
-    const name = getFilenameFromUrl(urlInput);
+  const onSubmitUrl = (data: UploadUrlFormValues) => {
+    const type = getUrlResourceType(data.url);
+    const name = getFilenameFromUrl(data.url);
     setPendingFiles((prev) => [...prev, { name, type }]);
-    setUrlInput("");
+    resetUrl();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleUrlKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      handleAddUrl();
+      e.preventDefault();
+      handleSubmit(onSubmitUrl)();
     }
   };
 
   const handleClose = () => {
     setPendingFiles([]);
-    setUrlInput("");
+    setDropError(null);
+    resetUrl();
     onClose();
   };
 
@@ -176,13 +222,18 @@ export function UploadModal({ isOpen, onClose, categoryId }: UploadModalProps) {
         return <Video className="w-4 h-4" />;
       case "audio":
         return <Music className="w-4 h-4" />;
+      case "image":
+        return <Image className="w-4 h-4" />;
       case "pdf":
       case "text":
+      case "markdown":
         return <FileText className="w-4 h-4" />;
       default:
         return <Link2 className="w-4 h-4" />;
     }
   };
+
+  const hasDropError = !!dropError;
 
   if (!isOpen) return null;
 
@@ -212,64 +263,97 @@ export function UploadModal({ isOpen, onClose, categoryId }: UploadModalProps) {
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Dropzone */}
-          <div
-            {...getRootProps()}
-            className={`
-              relative flex flex-col items-center justify-center gap-3 p-8
-              border-2 border-dashed rounded-xl cursor-pointer
-              transition-all duration-200
-              ${
-                isDragActive
-                  ? "border-[var(--primary)] bg-[var(--primary-muted)]"
-                  : "border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--background-hover)]"
-              }
-            `}
-          >
-            <input {...getInputProps()} />
+          <div>
             <div
-              className={`p-3 rounded-full ${isDragActive ? "bg-[var(--primary)]/20" : "bg-[var(--background-hover)]"}`}
+              {...getRootProps()}
+              className={`
+                relative flex flex-col items-center justify-center gap-3 p-8
+                border-2 border-dashed rounded-xl cursor-pointer
+                transition-all duration-200
+                ${
+                  hasDropError
+                    ? "border-[var(--alert)] bg-[var(--alert)]/5"
+                    : isDragActive
+                      ? "border-[var(--primary)] bg-[var(--primary-muted)]"
+                      : "border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--background-hover)]"
+                }
+              `}
             >
-              <Upload
-                className={`w-6 h-6 ${isDragActive ? "text-[var(--primary)]" : "text-[var(--foreground-tertiary)]"}`}
-              />
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-[var(--foreground)]">
-                {isDragActive
-                  ? "Suelta los archivos aqui"
-                  : "Arrastra archivos o haz clic para seleccionar"}
-              </p>
-              <p className="text-xs text-[var(--foreground-tertiary)] mt-1">
-                PDF, audio, video, documentos de texto
-              </p>
+              <input {...getInputProps()} />
+              <div
+                className={`p-3 rounded-full ${
+                  hasDropError
+                    ? "bg-[var(--alert)]/15"
+                    : isDragActive
+                      ? "bg-[var(--primary)]/20"
+                      : "bg-[var(--background-hover)]"
+                }`}
+              >
+                {hasDropError ? (
+                  <AlertCircle className="w-6 h-6 text-[var(--alert)]" />
+                ) : (
+                  <Upload
+                    className={`w-6 h-6 ${isDragActive ? "text-[var(--primary)]" : "text-[var(--foreground-tertiary)]"}`}
+                  />
+                )}
+              </div>
+              <div className="text-center">
+                {hasDropError ? (
+                  <p className="text-sm font-medium text-[var(--alert)]">
+                    {dropError}
+                  </p>
+                ) : (
+                  <p className="text-sm text-[var(--foreground)]">
+                    {isDragActive
+                      ? "Suelta los archivos aquí"
+                      : "Arrastra archivos o haz clic para seleccionar"}
+                  </p>
+                )}
+                <p className="text-xs text-[var(--foreground-tertiary)] mt-1.5">
+                  PDF · Audio · Video · Imagen · Texto · Markdown
+                </p>
+                <p className="text-xs text-[var(--foreground-tertiary)] mt-0.5">
+                  Audio {FILE_SIZE_LABELS.audio} · Video{" "}
+                  {FILE_SIZE_LABELS.video} · Imagen {FILE_SIZE_LABELS.image} ·
+                  PDF {FILE_SIZE_LABELS.pdf} · Texto/MD {FILE_SIZE_LABELS.text}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* URL input */}
           <div className="space-y-2">
             <label className="text-sm text-[var(--foreground-secondary)]">
-              O pega un enlace
+              Pega un enlace de YouTube, Instagram o TikTok
             </label>
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-tertiary)]" />
                 <input
-                  type="url"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="https://youtube.com/watch?v=..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[var(--background)] border border-[var(--border)] text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-tertiary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+                  type="text"
+                  {...register("url")}
+                  onKeyDown={handleUrlKeyDown}
+                  placeholder="https://youtube.com/watch?v=..., instagram.com/p/..., tiktok.com/@..."
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-[var(--background)] border text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-tertiary)] focus:outline-none transition-colors ${
+                    urlErrors.url
+                      ? "border-[var(--alert)] focus:border-[var(--alert)]"
+                      : "border-[var(--border)] focus:border-[var(--primary)]"
+                  }`}
                 />
               </div>
               <button
-                onClick={handleAddUrl}
-                disabled={!urlInput.trim()}
-                className="px-4 py-2.5 rounded-xl bg-[var(--background-hover)] text-sm text-[var(--foreground)] hover:bg-[var(--background)] border border-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={handleSubmit(onSubmitUrl)}
+                className="px-4 py-2.5 rounded-xl bg-[var(--background-hover)] text-sm text-[var(--foreground)] hover:bg-[var(--background)] border border-[var(--border)] transition-colors"
               >
                 Agregar
               </button>
             </div>
+            {urlErrors.url && (
+              <p className="flex items-center gap-1.5 text-xs text-[var(--alert)]">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {urlErrors.url.message}
+              </p>
+            )}
           </div>
 
           {/* Pending files list */}
