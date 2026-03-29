@@ -1,6 +1,11 @@
 import type { StateCreator } from "zustand";
 
-import type { ActivityType, RightPanelTab, ViewType } from "../../types";
+import type {
+  ActivityType,
+  LeftPanelTab,
+  RightPanelTab,
+  ViewType,
+} from "../../types";
 
 export type AppConfigSlice = {
   currentView: ViewType;
@@ -9,6 +14,7 @@ export type AppConfigSlice = {
   currentActivity: ActivityType;
   rightPanelOpen: boolean;
   rightPanelTab: RightPanelTab;
+  leftPanelTab: LeftPanelTab;
   sidebarWidth: number;
   temarioGenerated: boolean;
 
@@ -17,6 +23,7 @@ export type AppConfigSlice = {
   setTheme: (id: string | null) => void;
   setActivity: (activity: ActivityType) => void;
   toggleRightPanel: () => void;
+  setLeftPanelTab: (tab: LeftPanelTab) => void;
   setRightPanelTab: (tab: RightPanelTab) => void;
   setSidebarWidth: (width: number) => void;
   setTemarioGenerated: (generated: boolean) => void;
@@ -37,6 +44,7 @@ export const createAppConfigSlice: StateCreator<
   currentActivity: null,
   rightPanelOpen: false,
   rightPanelTab: "tutor",
+  leftPanelTab: "temario",
   sidebarWidth: 240,
   temarioGenerated: false,
 
@@ -51,6 +59,7 @@ export const createAppConfigSlice: StateCreator<
   setActivity: (activity) => set({ currentActivity: activity }),
   toggleRightPanel: () =>
     set((state) => ({ rightPanelOpen: !state.rightPanelOpen })),
+  setLeftPanelTab: (tab) => set({ leftPanelTab: tab }),
   setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
   setSidebarWidth: (width) =>
     set({ sidebarWidth: Math.min(320, Math.max(200, width)) }),
@@ -62,5 +71,6 @@ export const createAppConfigSlice: StateCreator<
       currentThemeId: null,
       currentActivity: null,
       rightPanelOpen: false,
+      leftPanelTab: "temario",
     }),
 });
