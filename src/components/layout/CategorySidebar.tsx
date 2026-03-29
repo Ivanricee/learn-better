@@ -81,15 +81,15 @@ export function CategorySidebar({
         {/* Back button */}
         <button
           onClick={handleBackClick}
-          className="flex items-center gap-2 px-4 py-3 text-sm text-[var(--foreground-secondary)] hover:text-[var(--primary)] transition-colors duration-150"
+          className="flex items-center gap-2 px-4 py-3 text-sm text-foreground-secondary hover:text-primary transition-colors duration-150"
         >
           <ArrowLeft className="w-4 h-4" />
-          Inicio
+          Regressa al inicio
         </button>
 
         {/* Category name */}
         <div className="px-4 pb-2">
-          <h1 className="font-display font-semibold text-lg text-[var(--foreground)]">
+          <h1 className="font-display font-semibold text-lg text-foreground">
             {category?.nombre || "Nueva categoria"}
           </h1>
         </div>
@@ -98,7 +98,7 @@ export function CategorySidebar({
         <div className="px-4 space-y-2 pb-4">
           <button
             onClick={onAddMaterial}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border)] text-sm text-[var(--foreground-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--primary-muted)] transition-all duration-150"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-primary bg-primary-muted text-sm text-primary hover:bg-primary/20 transition-all duration-150"
           >
             <Plus className="w-4 h-4" />
             Agregar material
@@ -112,7 +112,7 @@ export function CategorySidebar({
           ) : (
             <button
               onClick={onDiagnosticClick}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--primary)] bg-[var(--primary-muted)] text-sm text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all duration-150"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-primary bg-[var(--primary-muted)] text-sm text-primary hover:bg-primary/20 transition-all duration-150"
             >
               <Sparkles className="w-4 h-4" />
               Que me falta aprender?
@@ -134,7 +134,8 @@ export function CategorySidebar({
           >
             <TabsTrigger
               value="temario"
-              className="flex-1 gap-2 rounded-none h-full data-[state=active]:text-primary data-[state=active]:after:bg-primary"
+              className="flex-1 gap-2 rounded-none h-full data-[state=active]:text-primary
+              data-[state=active]:after:bg-primary"
             >
               <BookOpen className="w-4 h-4" />
               Temario
