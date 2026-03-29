@@ -120,7 +120,32 @@ export interface GlobalProgress {
   categorias: CategoryProgress[];
   roleplays_recientes: RecentRoleplay[];
 }
+// Resource types
+export type ResourceType =
+  | "youtube"
+  | "tiktok"
+  | "pdf"
+  | "audio"
+  | "video"
+  | "text"
+  | "url";
+export type ResourceStatus =
+  | "queued"
+  | "uploading"
+  | "processing"
+  | "done"
+  | "error";
 
+export interface Resource {
+  id: string;
+  categoryId: number;
+  name: string;
+  type: ResourceType;
+  status: ResourceStatus;
+  progress: number; // 0-100
+  url?: string;
+  createdAt: Date;
+}
 // App state types
 export type ViewType = "home" | "progress" | "settings";
 export type ActivityType =
@@ -132,3 +157,4 @@ export type ActivityType =
   | "progress"
   | null;
 export type RightPanelTab = "tutor" | "resource";
+export type LeftPanelTab = "temario" | "recursos";
