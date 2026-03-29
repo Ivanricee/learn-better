@@ -130,23 +130,23 @@ export function CategorySidebar({
         >
           <TabsList
             variant="line"
-            className="w-full rounded-none border-b border-[var(--border-subtle)] h-10 px-0 gap-0"
+            className="w-full rounded-none border-b border-border-subtle h-10 px-0 gap-0"
           >
             <TabsTrigger
               value="temario"
-              className="flex-1 gap-2 rounded-none h-full data-[state=active]:text-[var(--primary)] data-[state=active]:after:bg-[var(--primary)]"
+              className="flex-1 gap-2 rounded-none h-full data-[state=active]:text-primary data-[state=active]:after:bg-primary"
             >
               <BookOpen className="w-4 h-4" />
               Temario
             </TabsTrigger>
             <TabsTrigger
               value="recursos"
-              className="flex-1 gap-2 rounded-none h-full relative data-[state=active]:text-[var(--primary)] data-[state=active]:after:bg-[var(--primary)]"
+              className="flex-1 gap-2 rounded-none h-full relative data-[state=active]:text-primary data-[state=active]:after:bg-primary"
             >
               <FolderOpen className="w-4 h-4" />
               Recursos
               {activeResourceCount > 0 && (
-                <span className="absolute top-1.5 right-3 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--primary)] text-[10px] font-bold text-[var(--background)]">
+                <span className="absolute top-1.5 right-3 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-background">
                   {activeResourceCount}
                 </span>
               )}
