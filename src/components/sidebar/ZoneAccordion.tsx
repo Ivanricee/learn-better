@@ -19,9 +19,9 @@ interface ZoneAccordionProps {
 }
 
 const variantStyles = {
-  prerequisites: "text-[var(--secondary)]",
-  material: "text-[var(--foreground)]",
-  next: "text-[var(--foreground-tertiary)]",
+  prerequisites: "text-foreground-tertiary",
+  material: "text-foreground",
+  next: "text-foreground-tertiary",
 };
 
 export function ZoneAccordion({
