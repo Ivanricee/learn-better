@@ -45,7 +45,7 @@ export const createAppConfigSlice: StateCreator<
   rightPanelOpen: false,
   rightPanelTab: "tutor",
   leftPanelTab: "temario",
-  sidebarWidth: 240,
+  sidebarWidth: 270,
   temarioGenerated: false,
 
   setView: (view) => set({ currentView: view }),
@@ -62,7 +62,7 @@ export const createAppConfigSlice: StateCreator<
   setLeftPanelTab: (tab) => set({ leftPanelTab: tab }),
   setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
   setSidebarWidth: (width) =>
-    set({ sidebarWidth: Math.min(320, Math.max(200, width)) }),
+    set({ sidebarWidth: Math.min(400, Math.max(200, width)) }),
   setTemarioGenerated: (generated) => set({ temarioGenerated: generated }),
   resetToHome: () =>
     set({

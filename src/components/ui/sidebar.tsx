@@ -15,7 +15,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 
-const SIDEBAR_WIDTH = "240px";
+const SIDEBAR_WIDTH = "300px";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
