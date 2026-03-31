@@ -91,11 +91,12 @@ export async function processAudioFile({
   } catch (err) {
     if (oggPath) await unlink(oggPath).catch(() => {});
 
-    const errorType = err.code === "whisper_quota"
-      ? "whisper_quota"
-      : err.code === "conversion_failed"
-        ? "conversion_failed"
-        : "connection_error";
+    const errorType =
+      err.code === "whisper_quota"
+        ? "whisper_quota"
+        : err.code === "conversion_failed"
+          ? "conversion_failed"
+          : "connection_error";
 
     await updateJob(jobId, {
       status: "error",
