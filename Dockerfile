@@ -37,6 +37,9 @@ RUN pip3 install yt-dlp --break-system-packages
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+# Archivos necesarios para ejecutar worker.js con la misma imagen
+COPY --from=builder /app/worker.js ./worker.js
+COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
 ENV PORT 3000
