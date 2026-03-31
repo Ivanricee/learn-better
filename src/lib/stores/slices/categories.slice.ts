@@ -1,25 +1,22 @@
 import type { StateCreator } from "zustand";
 
 import type { Category, ProcessingItem } from "../../types";
-import { categories as mockCategories } from "../../mock-data";
 
 interface CreateCategoryInput {
   nombre: string;
-  temario?: string[];
 }
 
 interface UpdateCategoryInput {
   nombre?: string;
-  progreso?: number;
-  temas?: number;
-  temario?: string[];
 }
 
 export type CategoriesSlice = {
   categories: Category[];
-  createCategory: (input: CreateCategoryInput) => Category | null;
-  updateCategory: (id: number, updates: UpdateCategoryInput) => void;
-  deleteCategory: (id: number) => void;
+  isLoading: boolean;
+  fetchCategories: () => Promise<void>;
+  createCategory: (input: CreateCategoryInput) => Promise<Category | null>;
+  updateCategory: (id: string, updates: UpdateCategoryInput) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 };
 
 export type ProcessingSlice = {
@@ -38,68 +35,97 @@ export const createCategoriesSlice: StateCreator<
   [],
   [],
   CategoriesSlice
-> = (set) => ({
-  categories: [...mockCategories],
+> = (set, get) => ({
+  categories: [],
+  isLoading: false,
 
-  createCategory: ({ nombre, temario }) => {
+  fetchCategories: async () => {
+    set({ isLoading: true });
+    try {
+      const response = await fetch("/api/categories");
+      if (!response.ok) {
+        throw new Error("Error al obtener categorías");
+      }
+      const categories = await response.json();
+      set({ categories, isLoading: false });
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      set({ isLoading: false });
+    }
+  },
+
+  createCategory: async ({ nombre }) => {
     const normalizedName = nombre.trim();
 
     if (!normalizedName) {
       return null;
     }
 
-    let createdCategory: Category | null = null;
+    try {
+      const response = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: normalizedName }),
+      });
 
-    set((state) => {
-      const nextId =
-        state.categories.length > 0
-          ? Math.max(...state.categories.map((category) => category.id)) + 1
-          : 1;
+      if (!response.ok) {
+        throw new Error("Error al crear categoría");
+      }
 
-      createdCategory = {
-        id: nextId,
-        nombre: normalizedName,
-        temas: temario?.length ?? 0,
-        progreso: 0,
-      };
+      const newCategory = await response.json();
 
-      return {
-        categories: [...state.categories, createdCategory],
-      };
-    });
+      set((state) => ({
+        categories: [...state.categories, newCategory],
+      }));
 
-    return createdCategory;
+      return newCategory;
+    } catch (error) {
+      console.error("Error creating category:", error);
+      return null;
+    }
   },
 
-  updateCategory: (id, updates) =>
-    set((state) => ({
-      categories: state.categories.map((category) => {
-        if (category.id !== id) {
-          return category;
-        }
+  updateCategory: async (id, updates) => {
+    try {
+      const response = await fetch(`/api/categories/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
 
-        const { temario, nombre, ...rest } = updates;
+      if (!response.ok) {
+        throw new Error("Error al actualizar categoría");
+      }
 
-        const nextTemas =
-          temario !== undefined
-            ? temario.length
-            : typeof rest.temas === "number"
-              ? rest.temas
-              : category.temas;
+      const updatedCategory = await response.json();
 
-        return {
-          ...category,
-          ...rest,
-          temas: nextTemas,
-          nombre: nombre?.trim() || category.nombre,
-        };
-      }),
-    })),
+      set((state) => ({
+        categories: state.categories.map((category) =>
+          category.id === id ? updatedCategory : category,
+        ),
+      }));
+    } catch (error) {
+      console.error("Error updating category:", error);
+    }
+  },
 
-  deleteCategory: (id) =>
-    set((state) => ({
-      categories: state.categories.filter((category) => category.id !== id),
-    })),
+  deleteCategory: async (id) => {
+    try {
+      const response = await fetch(`/api/categories/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al eliminar categoría");
+      }
+
+      set((state) => ({
+        categories: state.categories.filter((category) => category.id !== id),
+      }));
+    } catch (error) {
+      console.error("Error deleting category:", error);
+    }
+  },
 });
 
 export const createProcessingSlice: StateCreator<
