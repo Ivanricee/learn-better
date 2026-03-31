@@ -11,7 +11,7 @@ import { tutorResponses } from "@/lib/mock-data";
 import type { TutorMessage } from "@/lib/types";
 
 interface RightPanelProps {
-  categoryId: number;
+  categoryId: string; // UUID
   onClose: () => void;
   isInRoleplay?: boolean;
   isOpen?: boolean;
