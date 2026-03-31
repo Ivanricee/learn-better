@@ -46,9 +46,11 @@ export async function POST(req: Request) {
       file: finalPath, // ← retorna la ruta completa con extensión
       sizeMB,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Cleanup en caso de error
     await fs.unlink(finalPath).catch(() => {});
-    return Response.json({ error: error.message }, { status: 500 });
+    const message =
+      error instanceof Error ? error.message : "Error desconocido";
+    return Response.json({ error: message }, { status: 500 });
   }
 }
