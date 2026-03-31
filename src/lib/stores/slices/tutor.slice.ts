@@ -3,12 +3,12 @@ import type { StateCreator } from "zustand";
 import type { TutorMessage } from "../../types";
 
 export type TutorSlice = {
-  conversations: Record<number, TutorMessage[]>;
+  conversations: Record<string, TutorMessage[]>;
   activeConversationId: string | null;
   tutorConsultsDuringRoleplay: number;
 
-  addMessage: (categoryId: number, message: TutorMessage) => void;
-  clearConversation: (categoryId: number) => void;
+  addMessage: (categoryId: string, message: TutorMessage) => void;
+  clearConversation: (categoryId: string) => void;
   incrementRoleplayConsults: () => void;
   resetRoleplayConsults: () => void;
 };

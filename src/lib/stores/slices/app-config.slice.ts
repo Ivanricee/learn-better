@@ -9,7 +9,7 @@ import type {
 
 export type AppConfigSlice = {
   currentView: ViewType;
-  currentCategoryId: number | null;
+  currentCategoryId: string | null;
   currentThemeId: string | null;
   currentActivity: ActivityType;
   rightPanelOpen: boolean;
@@ -19,7 +19,7 @@ export type AppConfigSlice = {
   temarioGenerated: boolean;
 
   setView: (view: ViewType) => void;
-  setCategory: (id: number | null) => void;
+  setCategory: (id: string | null) => void;
   setTheme: (id: string | null) => void;
   setActivity: (activity: ActivityType) => void;
   toggleRightPanel: () => void;

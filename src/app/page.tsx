@@ -73,7 +73,7 @@ export default function Home() {
   };
 
   const handleCategorizationConfirm = (
-    categoryId: number | null,
+    categoryId: string | null,
     newCategoryName?: string,
   ) => {
     if (categoryId === null && newCategoryName) {
@@ -93,7 +93,7 @@ export default function Home() {
     setShowCategorizationModal(false);
   };
 
-  const handleCategoryClick = (id: number) => {
+  const handleCategoryClick = (id: string) => {
     setCategory(id);
     router.push(`/category/${id}`);
   };

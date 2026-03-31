@@ -6,7 +6,7 @@ import { temario, categories } from "@/lib/mock-data";
 import { StatusBadge, getStatusDotColor } from "@/components/ui/StatusBadge";
 
 interface CategoryProgressViewProps {
-  categoryId: number;
+  categoryId: string; // UUID
 }
 
 export function CategoryProgressView({
