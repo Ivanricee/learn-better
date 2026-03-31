@@ -3,11 +3,12 @@ import type { ResourceType } from "@/lib/types";
 export interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  categoryId: number;
+  categoryId: string;
 }
 
 export interface PendingResource {
   key: string;
   name: string;
   type: ResourceType;
+  sourceUrl?: string; // URL original para recursos de tipo youtube/tiktok/instagram
 }
