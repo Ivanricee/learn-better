@@ -21,7 +21,7 @@ import { UploadModal } from "@/components/modals/UploadModal";
 export default function CategoryPage() {
   const params = useParams();
   const router = useRouter();
-  const categoryId = parseInt(params.id as string);
+  const categoryId = params.id as string; // UUID
 
   const {
     currentThemeId,
@@ -33,6 +33,7 @@ export default function CategoryPage() {
     setTemarioGenerated,
     temarioGenerated,
     sidebarWidth,
+    loadResourcesFromCategory,
   } = useAppStore();
 
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
@@ -40,6 +41,13 @@ export default function CategoryPage() {
   const [roleplayPhase, setRoleplayPhase] = useState<"intro" | "chat" | "eval">(
     "intro",
   );
+
+  // Load resources from PostgreSQL when category changes
+  useEffect(() => {
+    if (categoryId) {
+      loadResourcesFromCategory(categoryId);
+    }
+  }, [categoryId, loadResourcesFromCategory]);
 
   // Initialize with first theme selected
   useEffect(() => {
