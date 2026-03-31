@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono, DM_Sans } from "next/font/google";
 //import { Analytics } from '@vercel/analytics/next'
 import "../styles/globals.css";
+import { StoreInitializer } from "@/components/providers/store-initializer";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -57,6 +58,7 @@ export default function RootLayout({
       <body
         className={`${plusJakarta.variable} ${jetbrainsMono.variable} ${dmSans.variable} font-sans antialiased`}
       >
+        <StoreInitializer />
         {children}
         {
           //<Analytics />
