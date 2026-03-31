@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { queryMany } from "@/lib/db";
 import type { Job } from "@/lib/types";
-// GET /api/jobs/category/[categoryId] - Listar jobs de una categoría (excluye cancelled)
+// GET /api/jobs/category/[categoryId] - Listar jobs de una categoría
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ categoryId: string }> },
@@ -28,7 +28,7 @@ export async function GET(
         f.source_url
        FROM jobs j
        JOIN files f ON f.id = j.file_id
-       WHERE j.category_id = $1 AND j.status != 'cancelled'
+       WHERE j.category_id = $1
        ORDER BY j.created_at DESC`,
       [categoryId],
     );
