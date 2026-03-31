@@ -25,7 +25,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Trainery - Aprende de tu propio material",
+  title: "Learn Better - Aprende de tu propio material",
   description:
     "Plataforma de aprendizaje activo basada en tu contenido. Convierte PDFs, videos y audios en práctica situacional.",
   generator: "v0.app",

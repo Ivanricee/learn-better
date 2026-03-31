@@ -3,7 +3,7 @@
 @custom-variant dark (&:is(.dark *));
 
 
-/* Trainery Dark Theme - Night Workspace Palette */
+/* Learn better Dark Theme - Night Workspace Palette */
 :root {
   /* Backgrounds - warm dark tones from DESIGN_SYSTEM_1 */
   --background: #141312;
@@ -64,7 +64,7 @@
   --radius-lg: 1rem;
   --radius-xl: 1.25rem;
 
-  /* Sidebar (shadcn) — mapped to Trainery palette */
+  /* Sidebar (shadcn) — mapped to Learn Better palette */
   --sidebar: #141312;
   --sidebar-foreground: #e6e2df;
   --sidebar-primary: #a1cde4;
