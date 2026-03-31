@@ -31,7 +31,7 @@ export async function GET(
   }
 }
 
-// DELETE /api/jobs/[id] - Cancelar un job (elimina job, file y archivo físico)
+// DELETE /api/jobs/[id] - Cancelar job: mata proceso, elimina archivo físico, elimina job+file
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -39,24 +39,34 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Obtener información del job y archivo
     const job = await queryOne<{
       status: string;
       category_id: string;
       file_id: string;
-    }>(`SELECT status, category_id, file_id FROM jobs WHERE id = $1`, [id]);
+      pid: number | null;
+    }>(`SELECT status, category_id, file_id, pid FROM jobs WHERE id = $1`, [
+      id,
+    ]);
 
     if (!job) {
       return NextResponse.json({ error: "Job no encontrado" }, { status: 404 });
     }
 
-    // Obtener información del archivo para eliminarlo físicamente
+    // Matar proceso del worker si está corriendo
+    if (job.pid) {
+      try {
+        process.kill(job.pid, "SIGTERM");
+        console.log(`✅ SIGTERM enviado al proceso ${job.pid}`);
+      } catch {
+        // El proceso ya terminó, continuar
+      }
+    }
+
+    // Eliminar archivo físico si existe
     const file = await queryOne<{ storage_path: string | null }>(
       `SELECT storage_path FROM files WHERE id = $1`,
       [job.file_id],
     );
-
-    // Eliminar archivo físico si existe
     if (file?.storage_path) {
       try {
         const { unlink } = await import("fs/promises");
@@ -64,14 +74,13 @@ export async function DELETE(
         console.log(`✅ Archivo físico eliminado: ${file.storage_path}`);
       } catch (error) {
         console.error("Error al eliminar archivo físico:", error);
-        // Continuar aunque falle la eliminación del archivo
       }
     }
 
     // Eliminar registro de files (CASCADE eliminará el job automáticamente)
     await query(`DELETE FROM files WHERE id = $1`, [job.file_id]);
 
-    // Buscar el siguiente job queued de esta categoría y marcarlo como pending
+    // Promover el siguiente job queued de esta categoría a pending
     const nextJob = await queryOne<{ id: string }>(
       `SELECT id FROM jobs
        WHERE category_id = $1 AND status = 'queued'
@@ -79,7 +88,6 @@ export async function DELETE(
        LIMIT 1`,
       [job.category_id],
     );
-
     if (nextJob) {
       await query(`UPDATE jobs SET status = 'pending' WHERE id = $1`, [
         nextJob.id,
