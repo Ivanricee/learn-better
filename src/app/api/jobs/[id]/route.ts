@@ -50,13 +50,6 @@ export async function DELETE(
       return NextResponse.json({ error: "Job no encontrado" }, { status: 404 });
     }
 
-    if (job.status === "done") {
-      return NextResponse.json(
-        { error: "No se puede cancelar un job completado" },
-        { status: 400 },
-      );
-    }
-
     // Obtener información del archivo para eliminarlo físicamente
     const file = await queryOne<{ storage_path: string | null }>(
       `SELECT storage_path FROM files WHERE id = $1`,

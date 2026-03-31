@@ -119,30 +119,25 @@ function ResourceItem({ resource }: { resource: Resource }) {
   const isActive =
     resource.status === "uploading" || resource.status === "processing";
 
-  const canCancel =
-    resource.status === "uploading" ||
-    resource.status === "processing" ||
-    resource.status === "queued" ||
-    resource.status === "pending";
-
-  const handleCancel = async (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (!confirm("¿Cancelar este archivo?")) return;
+    if (!confirm("¿Eliminar este recurso?")) return;
 
     try {
-      // Llamar a la API para cancelar el job
+      // Llamar a la API para eliminar el job
       const response = await fetch(`/api/jobs/${resource.id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        updateResourceStatus(resource.id, "cancelled");
+        // Eliminar del store local inmediatamente
+        removeResource(resource.id);
       } else {
-        console.error("Error al cancelar job");
+        console.error("Error al eliminar recurso");
       }
     } catch (error) {
-      console.error("Error al cancelar job:", error);
+      console.error("Error al eliminar recurso:", error);
     }
   };
 
@@ -177,16 +172,14 @@ function ResourceItem({ resource }: { resource: Resource }) {
         )}
       </div>
 
-      {/* Cancel button */}
-      {canCancel && (
-        <button
-          onClick={handleCancel}
-          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-[var(--background)] text-[var(--foreground-tertiary)] hover:text-[var(--alert)] transition-all"
-          title="Cancelar"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
+      {/* Delete button */}
+      <button
+        onClick={handleDelete}
+        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-[var(--background)] text-[var(--foreground-tertiary)] hover:text-[var(--alert)] transition-all"
+        title="Eliminar"
+      >
+        <X className="w-4 h-4" />
+      </button>
     </div>
   );
 }
