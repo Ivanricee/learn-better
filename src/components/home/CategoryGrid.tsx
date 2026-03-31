@@ -5,7 +5,7 @@ import { CategoryCard } from "./CategoryCard";
 
 interface CategoryGridProps {
   categories: Category[];
-  onCategoryClick: (id: number) => void;
+  onCategoryClick: (id: string) => void;
 }
 
 export function CategoryGrid({

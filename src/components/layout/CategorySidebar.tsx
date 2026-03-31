@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 
 interface CategorySidebarProps {
-  categoryId: number;
+  categoryId: string; // UUID
   onDiagnosticClick: () => void;
   onAddMaterial: () => void;
 }
