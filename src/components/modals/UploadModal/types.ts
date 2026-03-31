@@ -11,4 +11,5 @@ export interface PendingResource {
   name: string;
   type: ResourceType;
   sourceUrl?: string; // URL original para recursos de tipo youtube/tiktok/instagram
+  file?: File; // File object para archivos locales (pdf, video, audio, imagen, texto)
 }
