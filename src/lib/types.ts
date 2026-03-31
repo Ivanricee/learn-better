@@ -143,12 +143,14 @@ export type ResourceStatus =
 
 export interface Resource {
   id: string;
+  jobId?: string; // UUID del job en la tabla jobs
   categoryId: string; // UUID
   name: string;
   type: ResourceType;
   status: ResourceStatus;
   progress: number; // 0-100
   url?: string;
+  error_message?: string; // Mensaje de error si status=error
   createdAt: Date;
 }
 // App state types
