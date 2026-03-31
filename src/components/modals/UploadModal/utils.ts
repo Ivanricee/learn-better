@@ -1,6 +1,7 @@
 import type { ResourceType } from "@/lib/types";
 
-export const SUPPORTED_TYPES_LABEL = "PDF · Audio · Video · Imagen · Texto/Markdown";
+export const SUPPORTED_TYPES_LABEL =
+  "PDF · Audio · Video · Imagen · Texto/Markdown";
 
 const normalizePendingValue = (value: string) => value.trim().toLowerCase();
 
@@ -30,7 +31,10 @@ export function getResourceType(file: File): ResourceType {
     return "audio";
   }
 
-  if (file.type.includes("video") || ["mp4", "webm", "mov"].includes(ext || "")) {
+  if (
+    file.type.includes("video") ||
+    ["mp4", "webm", "mov"].includes(ext || "")
+  ) {
     return "video";
   }
 
@@ -40,7 +44,7 @@ export function getResourceType(file: File): ResourceType {
 export function getUrlResourceType(url: string): ResourceType {
   if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
   if (url.includes("tiktok.com")) return "tiktok";
-  if (url.includes("instagram.com")) return "url";
+  if (url.includes("instagram.com")) return "instagram";
   return "url";
 }
 
@@ -49,12 +53,22 @@ export function getFilenameFromUrl(url: string): string {
     const urlObj = new URL(url);
 
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
-      return "Video de YouTube";
+      // Extraer video ID de YouTube
+      let videoId = "";
+      if (url.includes("youtube.com/watch")) {
+        videoId = urlObj.searchParams.get("v") || "";
+      } else if (url.includes("youtu.be/")) {
+        videoId = urlObj.pathname.split("/")[1] || "";
+      } else if (url.includes("youtube.com/shorts/")) {
+        videoId = urlObj.pathname.split("/shorts/")[1]?.split("?")[0] || "";
+      }
+      return videoId ? `youtube.com/.../${videoId}` : url;
     }
 
     if (url.includes("tiktok.com")) {
       const pathParts = urlObj.pathname.split("/");
-      const username = pathParts.find((part) => part.startsWith("@")) || "@creator";
+      const username =
+        pathParts.find((part) => part.startsWith("@")) || "@creator";
       return `TikTok ${username}`;
     }
 
