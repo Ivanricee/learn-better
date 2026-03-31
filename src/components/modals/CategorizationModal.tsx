@@ -16,10 +16,10 @@ import {
 interface CategorizationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (categoryId: number | null, newCategoryName?: string) => void;
+  onConfirm: (categoryId: string | null, newCategoryName?: string) => void;
   filename: string;
   fileType: FileType;
-  preselectedCategoryId?: number;
+  preselectedCategoryId?: string;
 }
 
 const fileIconMap: Record<string, React.ElementType> = {
@@ -59,7 +59,7 @@ export function CategorizationModal({
 }: CategorizationModalProps) {
   const categories = useCategoryStore((state) => state.categories);
   const suggestedCategoryId = categories[0]?.id ?? null;
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     preselectedCategoryId ?? suggestedCategoryId,
   );
   const [isNewCategory, setIsNewCategory] = useState(false);
@@ -76,7 +76,7 @@ export function CategorizationModal({
     }
   };
 
-  const handleCategorySelect = (id: number | null) => {
+  const handleCategorySelect = (id: string | null) => {
     if (id === null) {
       setIsNewCategory(true);
       setSelectedCategoryId(null);
