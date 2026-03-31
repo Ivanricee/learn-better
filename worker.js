@@ -168,67 +168,94 @@ async function isJobCancelled(jobId) {
   return result.rows.length === 0;
 }
 
-// Helper: marcar siguiente job como pending
-async function markNextJobAsPending(categoryId) {
-  const result = await pool.query(
-    `SELECT id FROM jobs
-     WHERE category_id = $1 AND status = 'queued'
-     ORDER BY created_at ASC
-     LIMIT 1`,
-    [categoryId],
-  );
-
-  if (result.rows.length > 0) {
-    const nextJobId = result.rows[0].id;
-    await pool.query("UPDATE jobs SET status = 'pending' WHERE id = $1", [
-      nextJobId,
-    ]);
-    console.log(`✅ Job ${nextJobId} marcado como pending`);
-  }
-}
-
 // Función principal de procesamiento
 async function processFile(job) {
   const { jobId, fileId, categoryId, fileType, testErrorType } = job.data;
 
   const startTime = Date.now();
-  console.log(
-    `\n🔄 [${new Date().toISOString()}] Procesando job ${jobId} (tipo: ${fileType})`,
-  );
+  console.log(`\n⚙️  Procesando: ${fileType.toUpperCase()}`);
+  console.log(`🔍 [DEBUG] Job recibido:`, {
+    jobId,
+    fileId,
+    categoryId,
+    fileType,
+    testErrorType,
+  });
 
   try {
-    // Actualizar status a processing
-    console.log(`⚙️ [Worker] Actualizando job ${jobId} a status: processing`);
-    await updateJob(jobId, { status: "processing", progress: 0 });
-    console.log(
-      `✅ [Worker] Job ${jobId} actualizado a processing (${Date.now() - startTime}ms)`,
+    // Verificar que el job existe y obtener su status actual
+    console.log(`🔍 [DEBUG] Verificando existencia del job en DB...`);
+    const jobCheck = await pool.query(
+      "SELECT id, status FROM jobs WHERE id = $1",
+      [jobId],
     );
+    if (jobCheck.rows.length === 0) {
+      console.log(`⚠️  Job eliminado, ignorando`);
+      console.log(
+        `🔍 [DEBUG] EDGE CASE: Job no encontrado en DB, fue cancelado antes de procesarse`,
+      );
+      return;
+    }
+
+    const currentStatus = jobCheck.rows[0].status;
+    console.log(`🔍 [DEBUG] Status actual del job en DB: ${currentStatus}`);
+
+    // Si está en queued, promover a pending
+    if (currentStatus === "queued") {
+      console.log(`🔍 [DEBUG] Promoviendo job de 'queued' a 'pending'...`);
+      await updateJob(jobId, { status: "pending" });
+      console.log(`✅ [DEBUG] Job promovido a 'pending'`);
+    }
+
+    // Actualizar status a processing
+    console.log(
+      `🔍 [DEBUG] Actualizando job a 'processing' con PID ${process.pid}...`,
+    );
+    await updateJob(jobId, {
+      status: "processing",
+      progress: 0,
+      pid: process.pid,
+    });
+    console.log(`✅ [DEBUG] Job actualizado a 'processing'`);
 
     // Obtener flujo de procesamiento según tipo
     const flow = PROCESSING_FLOWS[fileType];
     if (!flow) {
+      console.log(
+        `🔍 [DEBUG] EDGE CASE: Tipo de archivo no soportado: ${fileType}`,
+      );
       throw new Error(`Tipo de archivo no soportado: ${fileType}`);
     }
+    console.log(
+      `🔍 [DEBUG] Flujo de procesamiento obtenido: ${flow.length} pasos`,
+    );
 
     // Procesar cada paso del flujo
     for (let i = 0; i < flow.length; i++) {
       const { step, duration, progress } = flow[i];
+      console.log(`🔍 [DEBUG] Iniciando paso ${i + 1}/${flow.length}: ${step}`);
 
       // Verificar cancelación
+      console.log(`🔍 [DEBUG] Verificando si el job fue cancelado...`);
       if (await isJobCancelled(jobId)) {
-        console.log(`⚠️ Job ${jobId} cancelado`);
-        await markNextJobAsPending(categoryId);
+        console.log(`⚠️  Cancelado`);
+        console.log(
+          `🔍 [DEBUG] EDGE CASE: Job cancelado durante procesamiento en paso '${step}'`,
+        );
         return;
       }
+      console.log(`✅ [DEBUG] Job no cancelado, continuando...`);
 
       // Simular error si se especificó testErrorType
       if (testErrorType && ERROR_SIMULATIONS[testErrorType]) {
+        console.log(`🔍 [DEBUG] testErrorType detectado: ${testErrorType}`);
         const errorConfig = ERROR_SIMULATIONS[testErrorType];
         if (
           errorConfig.step === step ||
           (errorConfig.step === "random" && Math.random() > 0.5)
         ) {
-          console.log(`❌ Simulando error: ${testErrorType}`);
+          console.log(`❌ Error simulado: ${testErrorType}`);
+          console.log(`🔍 [DEBUG] EDGE CASE: Error simulado en paso '${step}'`);
           await updateJob(jobId, {
             status: "error",
             error_type: errorConfig.type,
@@ -236,38 +263,47 @@ async function processFile(job) {
             step,
             progress,
           });
-          await markNextJobAsPending(categoryId);
+          console.log(`✅ [DEBUG] Job actualizado con error en DB`);
           return;
         }
       }
 
       // Actualizar paso actual
-      console.log(`  📍 ${step} (${progress}%)`);
+      console.log(`   📍 ${step} (${progress}%)`);
+      console.log(
+        `🔍 [DEBUG] Actualizando DB: step='${step}', progress=${progress}`,
+      );
       await updateJob(jobId, { step, progress });
+      console.log(`✅ [DEBUG] DB actualizada correctamente`);
 
       // Simular duración del paso
+      console.log(`🔍 [DEBUG] Simulando procesamiento por ${duration}ms...`);
       await new Promise((resolve) => setTimeout(resolve, duration));
+      console.log(`✅ [DEBUG] Paso '${step}' completado`);
     }
 
     // Marcar como completado
+    console.log(
+      `🔍 [DEBUG] Todos los pasos completados, marcando job como 'done'...`,
+    );
     await updateJob(jobId, {
       status: "done",
       step: "done",
       progress: 100,
     });
-
-    console.log(`✅ Job ${jobId} completado exitosamente`);
-
-    // Marcar siguiente job como pending
-    await markNextJobAsPending(categoryId);
+    console.log(`✅ [DEBUG] Job marcado como 'done' en DB`);
+    const totalTime = Date.now() - startTime;
+    console.log(`⏱️  [DEBUG] Tiempo total de procesamiento: ${totalTime}ms`);
   } catch (error) {
-    console.error(`❌ Error procesando job ${jobId}:`, error);
+    console.error(`❌ Error: ${error.message}`);
+    console.error(`🔍 [DEBUG] Stack trace:`, error.stack);
+    console.log(`🔍 [DEBUG] EDGE CASE: Error inesperado durante procesamiento`);
     await updateJob(jobId, {
       status: "error",
       error_type: "connection_error",
       error_message: error.message,
     });
-    await markNextJobAsPending(categoryId);
+    console.log(`✅ [DEBUG] Error guardado en DB`);
   }
 }
 
@@ -281,12 +317,15 @@ async function startWorker() {
     retryDelay: 5,
     retryBackoff: true,
     noScheduling: false,
-    // Configuración de polling para reducir latencia al mínimo
-    newJobCheckInterval: 100, // Revisar nuevos jobs cada 100ms (mínimo permitido)
-    newJobCheckIntervalSeconds: undefined, // Desactivar el intervalo en segundos
-    // Reducir intervalos de mantenimiento para evitar interferencia
-    maintenanceIntervalSeconds: 120, // Mantenimiento cada 2 minutos en lugar de 1
-    archiveCompletedAfterSeconds: 3600, // Archivar después de 1 hora
+    // Configuración de polling agresivo
+    newJobCheckInterval: 100,
+    newJobCheckIntervalSeconds: undefined,
+    // DESHABILITAR mantenimiento automático que causa delays
+    noSupervisor: true, // Deshabilitar supervisor interno
+    noScheduling: true, // Deshabilitar scheduling
+    // Limpieza inmediata de jobs completados
+    deleteAfterSeconds: 60, // Eliminar jobs después de 1 minuto
+    archiveCompletedAfterSeconds: undefined, // No archivar
   });
 
   boss.on("error", (error) => {
@@ -296,7 +335,7 @@ async function startWorker() {
   await boss.start();
   console.log("✅ pg-boss iniciado correctamente");
   console.log(
-    "⚙️ [Worker] Configuración de polling: newJobCheckInterval = 100ms (mínimo)",
+    "⚙️ [Worker] Configuración: newJobCheckInterval=100ms, noSupervisor=true, deleteAfter=60s",
   );
 
   // Asegurar que la cola process-file exista
@@ -311,33 +350,78 @@ async function startWorker() {
   }
 
   // Registrar worker para procesar jobs
+  console.log("🔧 [Worker] Registrando handler para cola 'process-file'...");
+  console.log(
+    `🔍 [DEBUG] Configuración del worker: teamSize=5, teamConcurrency=1`,
+  );
+  let lastJobTime = Date.now();
+
   await boss.work(
     "process-file",
     {
       teamSize: 5,
       teamConcurrency: 1,
-      newJobCheckInterval: 100, // Revisar cola cada 100ms (mínimo permitido)
+      newJobCheckInterval: 100,
     },
     async (jobs) => {
+      const now = Date.now();
+      const timeSinceLastJob = now - lastJobTime;
+      lastJobTime = now;
+
+      console.log(`\n${"=".repeat(80)}`);
+      console.log(
+        `🔔 [${new Date().toISOString()}] NUEVO JOB RECIBIDO DE PG-BOSS`,
+      );
+      console.log(
+        `⏱️  Tiempo desde último job: ${timeSinceLastJob}ms (${(timeSinceLastJob / 1000).toFixed(2)}s)`,
+      );
+      console.log(`${"=".repeat(80)}`);
+      console.log(
+        `🔍 [DEBUG] Tipo de jobs recibido:`,
+        Array.isArray(jobs) ? "Array" : "Single",
+      );
+
       // pg-boss puede enviar un array de jobs o un solo job
       const jobArray = Array.isArray(jobs) ? jobs : [jobs];
+      console.log(`🔍 [DEBUG] Cantidad de jobs a procesar: ${jobArray.length}`);
 
       for (const job of jobArray) {
+        console.log(`🆔 Job ID: ${job.data.jobId}`);
+        console.log(`📦 Tipo: ${job.data.fileType}`);
+        console.log(`📁 Categoría: ${job.data.categoryId}`);
+        console.log(`🔍 [DEBUG] pg-boss job ID interno: ${job.id}`);
         console.log(
-          `\n📨 [${new Date().toISOString()}] [Worker] Job recibido de pg-boss:`,
-          job.id,
+          `🔍 [DEBUG] Datos completos del job:`,
+          JSON.stringify(job.data, null, 2),
         );
-        console.log("📦 [Worker] Data:", job.data);
-        console.log(`⏱️ [Worker] Iniciando procesamiento inmediatamente...`);
-        await processFile(job);
+
+        try {
+          console.log(`🔍 [DEBUG] Llamando a processFile()...`);
+          await processFile(job);
+          console.log(`\n✅ JOB COMPLETADO: ${job.data.jobId}`);
+          console.log(`🔍 [DEBUG] processFile() terminó exitosamente`);
+        } catch (error) {
+          console.error(`\n❌ JOB FALLÓ: ${job.data.jobId}`, error.message);
+          console.error(`🔍 [DEBUG] Error stack:`, error.stack);
+          console.log(
+            `🔍 [DEBUG] EDGE CASE: Error no capturado en processFile()`,
+          );
+          throw error;
+        }
       }
+
+      console.log(`\n${"=".repeat(80)}`);
+      console.log(`⏸️  ESPERANDO SIGUIENTE JOB...`);
+      console.log(`${"=".repeat(80)}\n`);
     },
   );
+
+  console.log("✅ [Worker] Handler registrado exitosamente");
 
   console.log("✅ Worker registrado y esperando jobs...\n");
 
   // Manejar shutdown gracefully
-  process.on("SIGINT", async () => {
+  process.once("SIGINT", async () => {
     console.log("\n⏹️  Deteniendo worker...");
     await boss.stop();
     await pool.end();
@@ -345,7 +429,7 @@ async function startWorker() {
     process.exit(0);
   });
 
-  process.on("SIGTERM", async () => {
+  process.once("SIGTERM", async () => {
     console.log("\n⏹️  Deteniendo worker...");
     await boss.stop();
     await pool.end();
