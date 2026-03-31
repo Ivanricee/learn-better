@@ -10,12 +10,32 @@ import type {
   GlobalProgress,
 } from "./types";
 
-// Categories for the home grid
+// Categories for the home grid (UUIDs)
 export const categories: Category[] = [
-  { id: 1, nombre: "Estrategia de Negocios", temas: 8, progreso: 78 },
-  { id: 2, nombre: "IA Aplicada", temas: 12, progreso: 52 },
-  { id: 3, nombre: "Derecho Fiscal", temas: 5, progreso: 18 },
-  { id: 4, nombre: "Marketing Digital", temas: 6, progreso: 35 },
+  {
+    id: "00000000-0000-0000-0000-000000000001",
+    nombre: "Estrategia de Negocios",
+    temas: 8,
+    progreso: 78,
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000002",
+    nombre: "IA Aplicada",
+    temas: 12,
+    progreso: 52,
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000003",
+    nombre: "Derecho Fiscal",
+    temas: 5,
+    progreso: 18,
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000004",
+    nombre: "Marketing Digital",
+    temas: 6,
+    progreso: 35,
+  },
 ];
 
 // Temario for category sidebar
