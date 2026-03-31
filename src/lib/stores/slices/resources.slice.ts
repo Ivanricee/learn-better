@@ -9,6 +9,8 @@ export type ResourcesSlice = {
   ) => string;
   updateResourceStatus: (id: string, status: ResourceStatus) => void;
   updateResourceProgress: (id: string, progress: number) => void;
+  updateResourceJobId: (id: string, jobId: string) => void;
+  updateResourceError: (id: string, error_message: string) => void;
   removeResource: (id: string) => void;
   getResourcesByCategory: (categoryId: string) => Resource[];
   loadResourcesFromCategory: (categoryId: string) => Promise<void>;
@@ -110,6 +112,20 @@ export const createResourcesSlice: StateCreator<
       ),
     })),
 
+  updateResourceJobId: (id, jobId) =>
+    set((state) => ({
+      resources: state.resources.map((resource) =>
+        resource.id === id ? { ...resource, jobId } : resource,
+      ),
+    })),
+
+  updateResourceError: (id, error_message) =>
+    set((state) => ({
+      resources: state.resources.map((resource) =>
+        resource.id === id ? { ...resource, error_message } : resource,
+      ),
+    })),
+
   removeResource: (id) =>
     set((state) => ({
       resources: state.resources.filter((resource) => resource.id !== id),
@@ -123,7 +139,7 @@ export const createResourcesSlice: StateCreator<
       console.log(
         `📥 [Resources] Cargando recursos de categoría: ${categoryId}`,
       );
-      const response = await fetch(`/api/jobs/category/${categoryId}`);
+      const response = await fetch(`/api/categories/${categoryId}/resources`);
 
       if (!response.ok) {
         console.error(
@@ -132,49 +148,45 @@ export const createResourcesSlice: StateCreator<
         return;
       }
 
-      const jobs = await response.json();
-      console.log(`✅ [Resources] Jobs cargados:`, jobs.length);
+      const data = await response.json();
+      console.log(`✅ [Resources] Recursos cargados:`, data.length);
 
-      // Convertir jobs a recursos
-      const apiResources: Resource[] = jobs.map((job: any) => ({
-        id: job.id,
-        categoryId: job.category_id,
-        name: job.file_name || job.source_url || "Sin nombre",
-        type: job.file_type,
-        status: job.status,
-        progress: job.progress || 0,
-        url: job.source_url,
-        createdAt: new Date(job.created_at),
-      }));
+      // Convertir a Resource: id = file.id, jobId = job.id
+      const apiResources: Resource[] = data
+        .filter((r: any) => r.job !== null) // solo los que tienen job activo
+        .map((r: any) => ({
+          id: r.id,
+          jobId: r.job.id,
+          categoryId,
+          name: r.name,
+          type: r.type,
+          status: r.job.status,
+          progress: r.job.progress ?? 0,
+          url: r.source_url ?? undefined,
+          error_message: r.job.error_message ?? undefined,
+          createdAt: new Date(r.created_at),
+        }));
 
-      // Combinar con recursos locales: mantener recursos locales que no están en la API
+      // Combinar con recursos locales (recién subidos, aún sin sync)
       set((state) => {
-        const currentResources = state.resources.filter(
+        const currentLocal = state.resources.filter(
           (r) => r.categoryId === categoryId,
         );
-        const apiResourceIds = new Set(apiResources.map((r) => r.id));
-
-        // Recursos locales que aún no están en la API (recién agregados)
-        const localOnlyResources = currentResources.filter(
-          (r) => !apiResourceIds.has(r.id),
-        );
+        const apiFileIds = new Set(apiResources.map((r) => r.id));
+        const localOnly = currentLocal.filter((r) => !apiFileIds.has(r.id));
 
         console.log(
-          `🔄 [Resources] Combinando: ${apiResources.length} de API + ${localOnlyResources.length} locales`,
+          `🔄 [Resources] Combinando: ${apiResources.length} de API + ${localOnly.length} locales`,
         );
 
         return {
           resources: [
             ...state.resources.filter((r) => r.categoryId !== categoryId),
             ...apiResources,
-            ...localOnlyResources,
+            ...localOnly,
           ],
         };
       });
-
-      console.log(
-        `✅ [Resources] Recursos sincronizados para categoría ${categoryId}`,
-      );
     } catch (error) {
       console.error("❌ [Resources] Error al cargar recursos:", error);
     }
