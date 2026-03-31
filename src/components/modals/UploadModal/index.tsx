@@ -55,7 +55,9 @@ export function UploadModal({ isOpen, onClose, categoryId }: UploadModalProps) {
 
     setPendingFiles((prev) => {
       const existingKeys = new Set(prev.map((item) => item.key));
-      const uniqueIncoming = incoming.filter((item) => !existingKeys.has(item.key));
+      const uniqueIncoming = incoming.filter(
+        (item) => !existingKeys.has(item.key),
+      );
       if (uniqueIncoming.length === 0) return prev;
       return [...prev, ...uniqueIncoming];
     });
@@ -107,7 +109,9 @@ export function UploadModal({ isOpen, onClose, categoryId }: UploadModalProps) {
   );
 
   const onDropRejected = useCallback(() => {
-    setDropError("Formato no compatible. Revisa los tipos y tamaños permitidos.");
+    setDropError(
+      "Formato no compatible. Revisa los tipos y tamaños permitidos.",
+    );
   }, []);
 
   const { getInputProps, getRootProps, isDragActive } = useDropzone({
@@ -122,7 +126,7 @@ export function UploadModal({ isOpen, onClose, categoryId }: UploadModalProps) {
     const name = getFilenameFromUrl(data.url);
     const key = getUrlPendingKey(data.url);
 
-    appendUniquePending([{ key, name, type }]);
+    appendUniquePending([{ key, name, type, sourceUrl: data.url }]);
     resetUrl();
   };
 
@@ -140,43 +144,184 @@ export function UploadModal({ isOpen, onClose, categoryId }: UploadModalProps) {
   };
 
   const removePendingFile = (index: number) => {
-    setPendingFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+    setPendingFiles((prev) =>
+      prev.filter((_, itemIndex) => itemIndex !== index),
+    );
   };
 
-  const simulateUpload = async (resourceId: string) => {
-    updateResourceStatus(resourceId, "uploading");
+  const pollJobStatus = async (jobId: string, resourceId: string) => {
+    console.log(
+      `🔄 [Polling] Iniciando polling para job ${jobId}, resource ${resourceId}`,
+    );
 
-    for (let progress = 0; progress <= 100; progress += 10) {
-      await new Promise((resolve) => setTimeout(resolve, 200 + Math.random() * 300));
-      updateResourceProgress(resourceId, progress);
-    }
+    const interval = setInterval(async () => {
+      try {
+        console.log(`📡 [Polling] Consultando /api/jobs/${jobId}...`);
 
-    updateResourceStatus(resourceId, "processing");
-    await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 2000));
-    updateResourceStatus(resourceId, "done");
+        const response = await fetch(`/api/jobs/${jobId}`);
+
+        console.log(`📥 [Polling] Respuesta:`, {
+          ok: response.ok,
+          status: response.status,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ [Polling] Error al consultar job:`, errorText);
+          clearInterval(interval);
+          updateResourceStatus(resourceId, "error");
+          return;
+        }
+
+        const job = await response.json();
+        console.log(
+          `📊 [${new Date().toISOString()}] [Polling] Estado del job:`,
+          {
+            status: job.status,
+            step: job.step,
+            progress: job.progress,
+            error_type: job.error_type,
+          },
+        );
+
+        // Actualizar progreso y status
+        updateResourceProgress(resourceId, job.progress || 0);
+
+        // Mapear status de job a status de resource
+        if (job.status === "done") {
+          console.log(`✅ [Polling] Job completado, deteniendo polling`);
+          updateResourceStatus(resourceId, "done");
+          clearInterval(interval);
+        } else if (job.status === "error" || job.status === "cancelled") {
+          console.log(
+            `❌ [Polling] Job con error/cancelado, deteniendo polling`,
+          );
+          updateResourceStatus(resourceId, job.status);
+          clearInterval(interval);
+        } else if (job.status === "processing") {
+          console.log(`⚙️ [Polling] Job en procesamiento, actualizando UI...`);
+          updateResourceStatus(resourceId, "processing");
+        } else if (job.status === "pending" || job.status === "queued") {
+          console.log(
+            `⏳ [Polling] Job en cola (${job.status}), actualizando UI...`,
+          );
+          updateResourceStatus(resourceId, job.status);
+        } else {
+          console.warn(
+            `⚠️ [Polling] Status desconocido: "${job.status}" - NO se actualiza UI`,
+          );
+        }
+      } catch (error) {
+        console.error("❌ [Polling] Error general:", error);
+        clearInterval(interval);
+        updateResourceStatus(resourceId, "error");
+      }
+    }, 2000); // Poll cada 2 segundos
   };
 
   const handleConfirm = async () => {
     if (pendingFiles.length === 0) return;
 
+    console.log("🚀 [UploadModal] Iniciando upload de archivos:", pendingFiles);
+    console.log(
+      `📊 [UploadModal] Total de archivos a procesar: ${pendingFiles.length}`,
+    );
     setIsAdding(true);
 
-    const resourceIds: string[] = [];
-    for (const file of pendingFiles) {
-      const id = addResource({
-        categoryId,
-        name: file.name,
-        type: file.type,
-      });
-      resourceIds.push(id);
-    }
+    try {
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const file = pendingFiles[i];
+        console.log(
+          `\n📄 [UploadModal] Procesando archivo ${i + 1}/${pendingFiles.length}:`,
+          {
+            name: file.name,
+            type: file.type,
+            sourceUrl: file.sourceUrl,
+          },
+        );
 
-    setLeftPanelTab("recursos");
-    setIsAdding(false);
-    handleClose();
+        // Crear recurso en el store local
+        const resourceId = addResource({
+          categoryId: categoryId.toString(),
+          name: file.name,
+          type: file.type,
+        });
 
-    for (const id of resourceIds) {
-      simulateUpload(id);
+        console.log(`✅ [UploadModal] Resource creado en Zustand:`, resourceId);
+
+        // Subir archivo a la API
+        const formData = new FormData();
+        formData.append("categoryId", categoryId.toString());
+
+        // Si es una URL (YouTube, TikTok, Instagram)
+        if (
+          file.type === "youtube" ||
+          file.type === "tiktok" ||
+          file.type === "instagram"
+        ) {
+          console.log(
+            `🔗 [UploadModal] Tipo URL detectado, agregando sourceUrl`,
+          );
+          if (!file.sourceUrl) {
+            console.error(
+              `❌ [UploadModal] sourceUrl faltante para URL resource`,
+            );
+            updateResourceStatus(resourceId, "error");
+            continue;
+          }
+          formData.append("sourceUrl", file.sourceUrl);
+        } else {
+          // Para archivos locales, necesitaríamos el File object
+          // Por ahora, solo manejamos URLs en esta fase
+          console.warn(
+            `⚠️ [UploadModal] Archivo local no soportado en Fase 1:`,
+            file.type,
+          );
+          updateResourceStatus(resourceId, "error");
+          continue;
+        }
+
+        console.log(`📤 [UploadModal] Enviando a /api/upload...`);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        console.log(`📥 [UploadModal] Respuesta de /api/upload:`, {
+          ok: response.ok,
+          status: response.status,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ [UploadModal] Error en /api/upload.`);
+          console.error(`   Status: ${response.status}`);
+          console.error(`   Response:`, errorText);
+          updateResourceStatus(resourceId, "error");
+          continue;
+        }
+
+        const responseData = await response.json();
+        console.log(`✅ [UploadModal] Job creado:`, responseData);
+
+        const { jobId } = responseData;
+
+        // Iniciar polling del job
+        console.log(`🔄 [UploadModal] Iniciando polling para job:`, jobId);
+        pollJobStatus(jobId, resourceId);
+      }
+
+      console.log(
+        `\n✅ [UploadModal] Todos los archivos procesados (${pendingFiles.length})`,
+      );
+      setLeftPanelTab("recursos");
+      setPendingFiles([]); // Limpiar pending files
+      setIsAdding(false);
+      handleClose();
+    } catch (error) {
+      console.error("❌ [UploadModal] Error general:", error);
+      setIsAdding(false);
     }
   };
 
