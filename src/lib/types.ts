@@ -1,9 +1,9 @@
 // Category types
 export interface Category {
-  id: number;
+  id: string; // UUID
   nombre: string;
-  temas: number;
-  progreso: number;
+  temas: number; // Calculado dinámicamente: COUNT de topics
+  progreso: number; // Calculado dinámicamente: % actividades completadas
 }
 
 // Theme/Topic types
@@ -124,6 +124,7 @@ export interface GlobalProgress {
 export type ResourceType =
   | "youtube"
   | "tiktok"
+  | "instagram"
   | "pdf"
   | "audio"
   | "video"
@@ -133,14 +134,16 @@ export type ResourceType =
   | "url";
 export type ResourceStatus =
   | "queued"
+  | "pending"
   | "uploading"
   | "processing"
   | "done"
-  | "error";
+  | "error"
+  | "cancelled";
 
 export interface Resource {
   id: string;
-  categoryId: number;
+  categoryId: string; // UUID
   name: string;
   type: ResourceType;
   status: ResourceStatus;
@@ -160,3 +163,75 @@ export type ActivityType =
   | null;
 export type RightPanelTab = "tutor" | "resource";
 export type LeftPanelTab = "temario" | "recursos";
+
+// Job types (worker processing)
+export type JobStatus =
+  | "queued"
+  | "pending"
+  | "processing"
+  | "done"
+  | "error"
+  | "cancelled";
+
+export type JobStep =
+  | "uploading"
+  | "downloading"
+  | "converting"
+  | "transcribing"
+  | "extracting"
+  | "vectorizing"
+  | "generating_temario"
+  | "done";
+
+export type ErrorType =
+  | "file_too_long"
+  | "whisper_quota"
+  | "conversion_failed"
+  | "upload_incomplete"
+  | "connection_error"
+  | "unsupported_format"
+  | "download_failed"
+  | "extraction_failed"
+  | "vectorization_failed"
+  | "temario_failed"
+  | "audio_too_long";
+
+export interface Job {
+  id: string; // UUID
+  file_id: string; // UUID
+  category_id: string; // UUID
+  status: JobStatus;
+  step: JobStep | null;
+  progress: number; // 0-100
+  error_type: ErrorType | null;
+  error_message: string | null;
+  pid: number | null;
+  retry_count: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// Topic types (temario)
+export interface Topic {
+  id: string; // UUID
+  category_id: string; // UUID
+  nombre: string;
+  zona: "zona1" | "zona2" | "zona3";
+  estado: ThemeStatus;
+  orden: number | null;
+  created_at: Date;
+}
+
+// Activity types
+export type ActivityTypeDB = "quiz_multiple" | "flashcard" | "roleplay";
+
+export interface Activity {
+  id: string; // UUID
+  topic_id: string; // UUID
+  category_id: string; // UUID
+  type: ActivityTypeDB;
+  label: string;
+  completed: boolean;
+  score: number | null;
+  created_at: Date;
+}
