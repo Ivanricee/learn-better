@@ -1,19 +1,30 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   FileText,
-  Video,
-  Music,
+  Image,
   Link2,
+  Music,
+  Video,
+  X,
+  Clock,
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Clock,
-  X,
 } from "lucide-react";
-import { useResourcesStore } from "@/lib/stores/zustand-store";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import type { Resource, ResourceType, ResourceStatus } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useResourcesStore } from "@/lib/stores/zustand-store";
 
 interface ResourcesListProps {
   categoryId: string; // UUID
@@ -45,9 +56,14 @@ function getResourceIcon(type: ResourceType) {
   }
 }
 
-function getStatusIndicator(status: ResourceStatus, progress: number) {
+function getStatusIndicator(
+  status: ResourceStatus,
+  progress?: number,
+  error_message?: string,
+) {
   switch (status) {
     case "queued":
+    case "pending":
       return (
         <div className="flex items-center gap-1.5 text-[var(--foreground-tertiary)]">
           <Clock className="w-3.5 h-3.5" />
@@ -55,15 +71,9 @@ function getStatusIndicator(status: ResourceStatus, progress: number) {
         </div>
       );
     case "uploading":
-      return (
-        <div className="flex items-center gap-1.5 text-[var(--tutor)]">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          <span className="text-xs">Subiendo {progress}%</span>
-        </div>
-      );
     case "processing":
       return (
-        <div className="flex items-center gap-1.5 text-[var(--primary)]">
+        <div className="flex items-center gap-1.5 text-[var(--tutor)]">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
           <span className="text-xs">Procesando...</span>
         </div>
@@ -76,12 +86,33 @@ function getStatusIndicator(status: ResourceStatus, progress: number) {
         </div>
       );
     case "error":
-      return (
+      const errorContent = (
         <div className="flex items-center gap-1.5 text-[var(--alert)]">
           <AlertCircle className="w-3.5 h-3.5" />
           <span className="text-xs">Error</span>
         </div>
       );
+
+      if (error_message) {
+        return (
+          <Tooltip.Provider delayDuration={200}>
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>{errorContent}</Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content
+                  className="z-50 max-w-xs rounded-lg bg-[var(--background-panel)] px-3 py-2 text-xs text-[var(--foreground)] shadow-lg border border-[var(--border)]"
+                  sideOffset={5}
+                >
+                  {error_message}
+                  <Tooltip.Arrow className="fill-[var(--background-panel)]" />
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+        );
+      }
+
+      return errorContent;
   }
 }
 
@@ -105,10 +136,11 @@ function getTypeColor(type: ResourceType): string {
 }
 
 function ResourceItem({ resource }: { resource: Resource }) {
-  const { removeResource, updateResourceStatus } = useResourcesStore();
+  const { removeResource } = useResourcesStore();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Log para debugging
-  console.log(`📋 [ResourceItem] Renderizando resource:`, {
+  console.log("� [ResourceItem] Renderizando resource:", {
     id: resource.id,
     name: resource.name,
     type: resource.type,
@@ -119,25 +151,37 @@ function ResourceItem({ resource }: { resource: Resource }) {
   const isActive =
     resource.status === "uploading" || resource.status === "processing";
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setShowDeleteDialog(true);
+  };
 
-    if (!confirm("¿Eliminar este recurso?")) return;
+  const handleConfirmDelete = async () => {
+    if (!resource.jobId) {
+      removeResource(resource.id);
+      setShowDeleteDialog(false);
+      return;
+    }
 
+    setIsDeleting(true);
     try {
-      // Llamar a la API para eliminar el job
-      const response = await fetch(`/api/jobs/${resource.id}`, {
+      const response = await fetch(`/api/jobs/${resource.jobId}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        // Eliminar del store local inmediatamente
         removeResource(resource.id);
+        setShowDeleteDialog(false);
       } else {
-        console.error("Error al eliminar recurso");
+        const errorText = await response.text();
+        console.error("Error al eliminar recurso:", errorText);
+        alert(`Error al eliminar: ${errorText}`);
       }
     } catch (error) {
       console.error("Error al eliminar recurso:", error);
+      alert("Error al eliminar el recurso");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -159,7 +203,11 @@ function ResourceItem({ resource }: { resource: Resource }) {
         <p className="text-sm text-[var(--foreground)] truncate">
           {resource.name}
         </p>
-        {getStatusIndicator(resource.status, resource.progress)}
+        {getStatusIndicator(
+          resource.status,
+          resource.progress,
+          resource.error_message,
+        )}
 
         {/* Progress bar for active uploads */}
         {resource.status === "uploading" && (
@@ -172,14 +220,43 @@ function ResourceItem({ resource }: { resource: Resource }) {
         )}
       </div>
 
-      {/* Delete button */}
+      {/* Delete button - mostrar para todos los recursos */}
       <button
-        onClick={handleDelete}
+        onClick={handleDeleteClick}
         className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-[var(--background)] text-[var(--foreground-tertiary)] hover:text-[var(--alert)] transition-all"
         title="Eliminar"
       >
         <X className="w-4 h-4" />
       </button>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Eliminar recurso?</DialogTitle>
+            <DialogDescription>
+              Esta acción eliminará permanentemente el recurso "{resource.name}"
+              y todos sus datos asociados. Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
