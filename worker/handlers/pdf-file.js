@@ -1,10 +1,10 @@
-import pdfParse from "pdf-parse";
 import { readFile } from "fs/promises";
+import { extractText, getDocumentProxy } from "unpdf";
 import { vectorizeText } from "../lib/vectorize.js";
 
 /**
  * Handler para archivos PDF.
- * Pipeline: pdf-parse → vectorizeText con chunking automático
+ * Pipeline: unpdf → vectorizeText con chunking automático
  *
  * @param {object} params
  * @param {string} params.jobId
@@ -25,15 +25,20 @@ export async function processPdfFile({
   try {
     await updateJob(jobId, { step: "extracting", progress: 10 });
 
-    const dataBuffer = await readFile(storagePath);
-    const pdfData = await pdfParse(dataBuffer);
+    const buffer = await readFile(storagePath);
+    const pdf = await getDocumentProxy(new Uint8Array(buffer));
+    const { totalPages, text } = await extractText(pdf, { mergePages: true });
+
+    console.log(`📄 [PDF] Total de páginas: ${totalPages}`);
+    console.log(`📄 [PDF] Texto extraído: ${text.length} caracteres`);
+    console.log(`📄 [PDF] Primeros 200 chars: ${text.substring(0, 200)}`);
 
     if (await isJobCancelled(jobId)) return;
 
     await updateJob(jobId, { step: "vectorizing", progress: 50 });
 
     await vectorizeText({
-      text: pdfData.text,
+      text,
       fileId,
       categoryId,
       chunkSize: 1000,
