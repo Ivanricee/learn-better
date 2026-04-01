@@ -39,6 +39,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 # Archivos necesarios para ejecutar worker.js con la misma imagen
 COPY --from=builder /app/worker.js ./worker.js
+COPY --from=builder /app/worker ./worker
 COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
