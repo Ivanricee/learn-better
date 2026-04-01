@@ -49,10 +49,15 @@ export async function convertToOgg(inputPath) {
 
     if (hasAudio) {
       // Caso normal: extraer audio del archivo
+      // Agregamos opciones para manejar archivos problemáticos
       ffmpegArgs = [
+        "-err_detect",
+        "ignore_err",
         "-i",
         inputPath,
         "-vn",
+        "-af",
+        "aresample=24000",
         "-c:a",
         "libvorbis",
         "-b:a",
@@ -89,11 +94,55 @@ export async function convertToOgg(inputPath) {
       stderr += data.toString();
     });
 
-    proc.on("close", (code) => {
+    proc.on("close", async (code) => {
       if (code !== 0) {
-        reject(
-          new Error(`ffmpeg falló con código ${code}: ${stderr.slice(-500)}`),
-        );
+        console.log(`⚠️  [ffmpeg] Conversión falló, intentando fallback...`);
+
+        // Fallback: intentar con decodificación más agresiva
+        const fallbackArgs = [
+          "-fflags",
+          "+genpts+igndts",
+          "-err_detect",
+          "ignore_err",
+          "-i",
+          inputPath,
+          "-vn",
+          "-ar",
+          "24000",
+          "-ac",
+          "1",
+          "-c:a",
+          "libvorbis",
+          "-b:a",
+          "24k",
+          "-y",
+          oggPath,
+        ];
+
+        const fallbackProc = spawn("ffmpeg", fallbackArgs);
+        let fallbackStderr = "";
+
+        fallbackProc.stderr.on("data", (data) => {
+          fallbackStderr += data.toString();
+        });
+
+        fallbackProc.on("close", (fallbackCode) => {
+          if (fallbackCode !== 0) {
+            reject(
+              new Error(
+                `ffmpeg falló con código ${code}: ${stderr.slice(-500)}`,
+              ),
+            );
+            return;
+          }
+          console.log(`✅ [ffmpeg] Conversión exitosa con fallback`);
+          resolve({ pid: fallbackProc.pid, oggPath });
+        });
+
+        fallbackProc.on("error", (err) => {
+          reject(new Error(`ffmpeg falló: ${err.message}`));
+        });
+
         return;
       }
       resolve({ pid, oggPath });
