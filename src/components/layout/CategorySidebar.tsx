@@ -156,7 +156,7 @@ export function CategorySidebar({
 
           <TabsContent value="temario" className="flex-1 overflow-y-auto mt-0">
             <ZoneAccordion
-              title="Prerequisitos"
+              title="Temario Básico"
               themes={temario.zona1}
               variant="prerequisites"
               activeThemeId={currentThemeId}
