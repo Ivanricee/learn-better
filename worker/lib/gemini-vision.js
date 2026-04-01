@@ -1,16 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import { readFile } from "fs/promises";
 
-/**
- * Extrae descripción detallada de una imagen usando Gemini Vision.
- *
- * @param {string} imagePath - Ruta local de la imagen
- * @returns {Promise<string>} - Descripción generada por Gemini
- */
-export async function extractImageDescription(imagePath) {
-  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+export async function extractImageDescription(imagePath) {
   const imageBuffer = await readFile(imagePath);
   const base64Image = imageBuffer.toString("base64");
 
@@ -24,15 +17,27 @@ export async function extractImageDescription(imagePath) {
           ? "image/gif"
           : "image/jpeg";
 
-  const result = await model.generateContent([
-    {
-      inlineData: {
-        data: base64Image,
-        mimeType,
+  const response = await groq.chat.completions.create({
+    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${base64Image}`,
+            },
+          },
+          {
+            type: "text",
+            text: "Describe esta imagen en detalle, incluyendo todos los elementos visuales, texto visible, y contexto relevante.",
+          },
+        ],
       },
-    },
-    "Describe esta imagen en detalle, incluyendo todos los elementos visuales, texto visible, y contexto relevante.",
-  ]);
+    ],
+    max_tokens: 1024,
+  });
 
-  return result.response.text();
+  return response.choices[0].message.content;
 }
