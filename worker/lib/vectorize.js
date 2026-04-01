@@ -29,6 +29,7 @@ export async function vectorizeTranscription({
   const embeddings = new GoogleGenerativeAIEmbeddings({
     modelName: "gemini-embedding-001",
     apiKey: process.env.GOOGLE_API_KEY,
+    outputDimensionality: 768,
   });
 
   const config = {
