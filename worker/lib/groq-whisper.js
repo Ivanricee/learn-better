@@ -35,7 +35,7 @@ export async function chunkAudioFile(oggPath) {
   while (startSec < totalSec) {
     const endSec = Math.min(startSec + chunkDurationSec, totalSec);
     const duration = endSec - startSec;
-    const chunkPath = `/tmp/${randomUUID()}.webm`;
+    const chunkPath = `/tmp/${randomUUID()}.ogg`;
 
     await cutAudioSegment(oggPath, chunkPath, startSec, duration);
     chunks.push({ path: chunkPath, startSec, endSec });

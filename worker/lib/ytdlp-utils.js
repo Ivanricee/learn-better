@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 
 /**
  * Descarga solo el audio de una URL (YouTube/TikTok/Instagram)
- * usando yt-dlp y lo convierte a WebM/Opus 64kbps.
+ * usando yt-dlp y lo convierte a OGG Opus 64kbps 16kHz mono.
  *
  * @param {string} url - URL del video
  * @returns {Promise<{ pid: number, oggPath: string }>}
@@ -11,7 +11,7 @@ import { randomUUID } from "crypto";
 export function downloadAudio(url) {
   const id = randomUUID();
   const outTemplate = `/tmp/${id}`;
-  const oggPath = `${outTemplate}.webm`;
+  const oggPath = `${outTemplate}.ogg`;
 
   return new Promise((resolve, reject) => {
     const proc = spawn("yt-dlp", [
@@ -20,11 +20,11 @@ export function downloadAudio(url) {
       "bestaudio",
       "-x",
       "--audio-format",
-      "opus",
+      "vorbis",
       "--audio-quality",
       "64K",
       "--postprocessor-args",
-      "ffmpeg:-ac 1 -ar 16000", // mono + 16kHz (igual que Whisper internamente)
+      "ffmpeg:-ac 1 -ar 16000 -c:a libopus -b:a 64k",
       "--no-playlist",
       "-o",
       outTemplate,
