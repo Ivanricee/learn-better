@@ -15,7 +15,12 @@ const { Pool } = pkg;
  * @param {string|null} params.sourceUrl
  * @returns {Promise<void>}
  */
-export async function vectorizeTranscription({ segments, fileId, categoryId, sourceUrl }) {
+export async function vectorizeTranscription({
+  segments,
+  fileId,
+  categoryId,
+  sourceUrl,
+}) {
   if (!segments || segments.length === 0) {
     console.log("⚠️ [Vectorize] No hay segmentos para vectorizar");
     return;
@@ -65,10 +70,10 @@ export async function vectorizeTranscription({ segments, fileId, categoryId, sou
 
   try {
     for (const id of insertedIds) {
-      await pool.query(
-        "UPDATE documents SET fk_metadata = $1 WHERE id = $2",
-        [fkMetadata, id],
-      );
+      await pool.query("UPDATE documents SET fk_metadata = $1 WHERE id = $2", [
+        fkMetadata,
+        id,
+      ]);
     }
     console.log(
       `✅ [Vectorize] ${insertedIds.length} segmentos vectorizados para file_id=${fileId}`,
