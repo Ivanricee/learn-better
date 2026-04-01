@@ -1,6 +1,6 @@
 import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import pkg from "pg";
 const { Pool } = pkg;
 
@@ -40,7 +40,7 @@ export async function vectorizeTranscription({
   const embeddings = new GoogleGenerativeAIEmbeddings({
     modelName: "gemini-embedding-001",
     apiKey: process.env.GOOGLE_API_KEY,
-    outputDimensionality: 768,
+    outputDimensionality: 768, //not working
   });
 
   const config = {
