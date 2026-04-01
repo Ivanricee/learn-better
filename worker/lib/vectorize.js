@@ -26,6 +26,16 @@ export async function vectorizeTranscription({
     return;
   }
 
+  // Filtrar segmentos con texto vacío o muy corto (menos de 3 caracteres)
+  const validSegments = segments.filter(
+    (seg) => seg.text && seg.text.trim().length >= 3,
+  );
+
+  if (validSegments.length === 0) {
+    console.log("⚠️ [Vectorize] Todos los segmentos están vacíos");
+    return;
+  }
+
   const embeddings = new GoogleGenerativeAIEmbeddings({
     modelName: "text-embedding-004",
     apiKey: process.env.GOOGLE_API_KEY,
@@ -47,10 +57,10 @@ export async function vectorizeTranscription({
 
   const vectorStore = await PGVectorStore.initialize(embeddings, config);
 
-  // Construir documentos: un documento por segmento
+  // Construir documentos: un documento por segmento válido
   // Incluir file_id, category_id y source_url directamente en metadata
-  const documents = segments.map((seg, i) => ({
-    pageContent: seg.text,
+  const documents = validSegments.map((seg, i) => ({
+    pageContent: seg.text.trim(),
     metadata: {
       file_id: fileId,
       category_id: categoryId,
