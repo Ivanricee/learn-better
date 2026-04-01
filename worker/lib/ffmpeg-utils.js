@@ -5,30 +5,83 @@ import { randomUUID } from "crypto";
 const execFileAsync = promisify(execFile);
 
 /**
+ * Verifica si un archivo tiene stream de audio.
+ *
+ * @param {string} filePath - Ruta del archivo
+ * @returns {Promise<boolean>} - true si tiene audio, false si no
+ */
+export async function hasAudioStream(filePath) {
+  try {
+    const { stdout } = await execFileAsync("ffprobe", [
+      "-v",
+      "error",
+      "-select_streams",
+      "a:0",
+      "-show_entries",
+      "stream=codec_type",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+      filePath,
+    ]);
+    return stdout.trim() === "audio";
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
  * Convierte cualquier archivo de audio/video a OGG 24kbps mono.
+ * Si el video no tiene audio, genera 1 segundo de silencio.
  *
  * @param {string} inputPath - Ruta del archivo de entrada
  * @returns {Promise<{ pid: number, oggPath: string }>}
  */
-export function convertToOgg(inputPath) {
+export async function convertToOgg(inputPath) {
   const id = randomUUID();
   const oggPath = `/tmp/${id}.ogg`;
 
-  return new Promise((resolve, reject) => {
-    const proc = spawn("ffmpeg", [
-      "-i",
-      inputPath,
-      "-vn",
-      "-c:a",
-      "libvorbis",
-      "-b:a",
-      "24k",
-      "-ac",
-      "1",
-      "-y",
-      oggPath,
-    ]);
+  // Verificar si tiene audio
+  const hasAudio = await hasAudioStream(inputPath);
+  console.log(`🔍 [ffmpeg] Archivo tiene audio: ${hasAudio}`);
 
+  return new Promise((resolve, reject) => {
+    let ffmpegArgs;
+
+    if (hasAudio) {
+      // Caso normal: extraer audio del archivo
+      ffmpegArgs = [
+        "-i",
+        inputPath,
+        "-vn",
+        "-c:a",
+        "libvorbis",
+        "-b:a",
+        "24k",
+        "-ac",
+        "1",
+        "-y",
+        oggPath,
+      ];
+    } else {
+      // Video sin audio: generar 1 segundo de silencio
+      console.log("⚠️  [ffmpeg] Video sin audio, generando silencio de 1s");
+      ffmpegArgs = [
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=r=24000:cl=mono",
+        "-t",
+        "1",
+        "-c:a",
+        "libvorbis",
+        "-b:a",
+        "24k",
+        "-y",
+        oggPath,
+      ];
+    }
+
+    const proc = spawn("ffmpeg", ffmpegArgs);
     const pid = proc.pid;
     let stderr = "";
 
