@@ -1,5 +1,6 @@
 import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import pkg from "pg";
 const { Pool } = pkg;
 
@@ -76,6 +77,81 @@ export async function vectorizeTranscription({
 
   console.log(
     `✅ [Vectorize] ${documents.length} segmentos vectorizados para file_id=${fileId}`,
+  );
+
+  await vectorStore.end();
+}
+
+/**
+ * Vectoriza texto plano dividiéndolo en chunks automáticamente.
+ * Usado para PDF, text, markdown e image (descripción).
+ *
+ * @param {object} params
+ * @param {string} params.text - Texto completo a vectorizar
+ * @param {string} params.fileId
+ * @param {string} params.categoryId
+ * @param {number} params.chunkSize - Tamaño de cada chunk (default: 1000)
+ * @param {number} params.chunkOverlap - Overlap entre chunks (default: 200)
+ * @returns {Promise<void>}
+ */
+export async function vectorizeText({
+  text,
+  fileId,
+  categoryId,
+  chunkSize = 1000,
+  chunkOverlap = 200,
+}) {
+  if (!text || text.trim().length === 0) {
+    console.log("⚠️ [Vectorize] Texto vacío, nada que vectorizar");
+    return;
+  }
+
+  const splitter = new RecursiveCharacterTextSplitter({
+    chunkSize,
+    chunkOverlap,
+  });
+
+  const chunks = await splitter.splitText(text);
+
+  if (chunks.length === 0) {
+    console.log("⚠️ [Vectorize] No se generaron chunks");
+    return;
+  }
+
+  const embeddings = new GoogleGenerativeAIEmbeddings({
+    modelName: "gemini-embedding-001",
+    apiKey: process.env.GOOGLE_API_KEY,
+  });
+
+  const config = {
+    postgresConnectionOptions: {
+      connectionString: process.env.DATABASE_URL,
+    },
+    tableName: "documents",
+    columns: {
+      idColumnName: "id",
+      vectorColumnName: "embedding",
+      contentColumnName: "content",
+      metadataColumnName: "metadata",
+    },
+  };
+
+  const vectorStore = await PGVectorStore.initialize(embeddings, config);
+
+  const documents = chunks.map((chunk, i) => ({
+    pageContent: chunk,
+    metadata: {
+      file_id: fileId,
+      category_id: categoryId,
+      source_url: null,
+      chunk_index: i,
+    },
+  }));
+
+  await vectorStore.addDocuments(documents);
+
+  console.log(
+    `✅ [Vectorize] ${chunks.length} chunks vectorizados para file_id=${fileId}`,
   );
 
   await vectorStore.end();
