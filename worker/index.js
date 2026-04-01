@@ -5,6 +5,9 @@ const { Pool } = pkg;
 import { processAudioSource } from "./handlers/audio-source.js";
 import { processVideoFile } from "./handlers/video-file.js";
 import { processAudioFile } from "./handlers/audio-file.js";
+import { processPdfFile } from "./handlers/pdf-file.js";
+import { processImageFile } from "./handlers/image-file.js";
+import { processTextFile } from "./handlers/text-file.js";
 
 // Configuración
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -59,42 +62,6 @@ async function getFileData(fileId) {
     throw new Error(`Archivo no encontrado en DB: ${fileId}`);
   }
   return result.rows[0];
-}
-
-// Flujos simulados para tipos aún no implementados (fases futuras)
-const PROCESSING_FLOWS_DUMMY = {
-  pdf: [
-    { step: "extracting", duration: 2000, progress: 30 },
-    { step: "vectorizing", duration: 3000, progress: 70 },
-    { step: "generating_temario", duration: 2000, progress: 100 },
-  ],
-  image: [
-    { step: "extracting", duration: 2000, progress: 30 },
-    { step: "vectorizing", duration: 3000, progress: 70 },
-    { step: "generating_temario", duration: 2000, progress: 100 },
-  ],
-  text: [
-    { step: "vectorizing", duration: 2000, progress: 60 },
-    { step: "generating_temario", duration: 2000, progress: 100 },
-  ],
-  markdown: [
-    { step: "vectorizing", duration: 2000, progress: 60 },
-    { step: "generating_temario", duration: 2000, progress: 100 },
-  ],
-};
-
-// Procesamiento dummy para tipos aún no reales
-async function processDummy(jobId, fileType) {
-  const flow = PROCESSING_FLOWS_DUMMY[fileType];
-  if (!flow) throw new Error(`Tipo de archivo no soportado: ${fileType}`);
-
-  for (const { step, duration, progress } of flow) {
-    if (await isJobCancelled(jobId)) return;
-    await updateJob(jobId, { step, progress });
-    await new Promise((resolve) => setTimeout(resolve, duration));
-  }
-
-  await updateJob(jobId, { status: "done", step: "done", progress: 100 });
 }
 
 // Función principal de procesamiento
@@ -172,9 +139,39 @@ async function processFile(job) {
         updateJob,
         isJobCancelled,
       });
+    } else if (fileType === "pdf") {
+      const { storage_path } = await getFileData(fileId);
+      await processPdfFile({
+        jobId,
+        fileId,
+        categoryId,
+        storagePath: storage_path,
+        updateJob,
+        isJobCancelled,
+      });
+    } else if (fileType === "image") {
+      const { storage_path } = await getFileData(fileId);
+      await processImageFile({
+        jobId,
+        fileId,
+        categoryId,
+        storagePath: storage_path,
+        updateJob,
+        isJobCancelled,
+      });
+    } else if (fileType === "text" || fileType === "markdown") {
+      const { storage_path } = await getFileData(fileId);
+      await processTextFile({
+        jobId,
+        fileId,
+        categoryId,
+        storagePath: storage_path,
+        fileType,
+        updateJob,
+        isJobCancelled,
+      });
     } else {
-      // Tipos aún en simulación: pdf, image, text, markdown
-      await processDummy(jobId, fileType);
+      throw new Error(`Tipo de archivo no soportado: ${fileType}`);
     }
 
     const totalTime = Date.now() - startTime;
