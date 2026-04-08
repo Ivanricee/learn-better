@@ -1,4 +1,5 @@
 import type { ResourceType } from "@/lib/types";
+import { ACCEPTED_EXTENSIONS } from "../schemas/upload.schema";
 
 export const SUPPORTED_TYPES_LABEL =
   "PDF · Audio · Video · Imagen · Texto/Markdown";
@@ -12,31 +13,30 @@ export const getUrlPendingKey = (url: string) =>
   `url:${normalizePendingValue(url)}`;
 
 export function getResourceType(file: File): ResourceType {
-  const ext = file.name.split(".").pop()?.toLowerCase();
+  const ext = file.name.split(".").pop()?.toLowerCase() || "";
 
-  if (file.type.includes("pdf") || ext === "pdf") return "pdf";
-  if (ext === "md") return "markdown";
-
+  if (
+    file.type.includes("pdf") ||
+    (ACCEPTED_EXTENSIONS.pdf as readonly string[]).includes(ext)
+  )
+    return "pdf";
+  if ((ACCEPTED_EXTENSIONS.markdown as readonly string[]).includes(ext))
+    return "markdown";
   if (
     file.type.startsWith("image/") ||
-    ["jpg", "jpeg", "png", "webp", "avif"].includes(ext || "")
-  ) {
+    (ACCEPTED_EXTENSIONS.image as readonly string[]).includes(ext)
+  )
     return "image";
-  }
-
   if (
     file.type.includes("audio") ||
-    ["mp3", "wav", "ogg", "m4a", "flac"].includes(ext || "")
-  ) {
+    (ACCEPTED_EXTENSIONS.audio as readonly string[]).includes(ext)
+  )
     return "audio";
-  }
-
   if (
     file.type.includes("video") ||
-    ["mp4", "webm", "mov"].includes(ext || "")
-  ) {
+    (ACCEPTED_EXTENSIONS.video as readonly string[]).includes(ext)
+  )
     return "video";
-  }
 
   return "text";
 }
