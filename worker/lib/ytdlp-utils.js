@@ -26,6 +26,8 @@ export function downloadAudio(url) {
       "--postprocessor-args",
       "ffmpeg:-ac 1 -ar 16000 -c:a libopus -b:a 64k",
       "--no-playlist",
+      "--cookies-from-browser",
+      "chrome,firefox,edge,brave,safari,opera",
       "-o",
       outTemplate,
     ]);
