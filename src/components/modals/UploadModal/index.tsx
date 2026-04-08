@@ -391,7 +391,7 @@ export function UploadModal({ isOpen, onClose, categoryId }: UploadModalProps) {
           <UploadUrlInput
             register={register}
             urlErrors={urlErrors}
-            onSubmitUrl={handleSubmit(onSubmitUrl)}
+            onSubmitUrl={() => handleSubmit(onSubmitUrl)()}
             onUrlKeyDown={handleUrlKeyDown}
             urlDurationLabel={URL_DURATION_LABEL}
           />
