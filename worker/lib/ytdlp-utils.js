@@ -2,19 +2,11 @@ import { spawn } from "child_process";
 import { randomUUID } from "crypto";
 
 /**
- * Descarga solo el audio de una URL (YouTube/TikTok/Instagram)
- * usando yt-dlp y lo convierte a OGG Opus 64kbps 16kHz mono.
- *
- * @param {string} url - URL del video
- * @returns {Promise<{ pid: number, oggPath: string }>}
+ * Intenta descargar con un navegador específico
  */
-export function downloadAudio(url) {
-  const id = randomUUID();
-  const outTemplate = `/tmp/${id}`;
-  const oggPath = `${outTemplate}.ogg`;
-
+function tryDownloadWithBrowser(url, outTemplate, browser) {
   return new Promise((resolve, reject) => {
-    const proc = spawn("yt-dlp", [
+    const args = [
       url,
       "-f",
       "bestaudio",
@@ -26,12 +18,15 @@ export function downloadAudio(url) {
       "--postprocessor-args",
       "ffmpeg:-ac 1 -ar 16000 -c:a libopus -b:a 64k",
       "--no-playlist",
-      "--cookies-from-browser",
-      "chrome,firefox,edge,brave,safari,opera",
       "-o",
       outTemplate,
-    ]);
+    ];
 
+    if (browser) {
+      args.splice(-2, 0, "--cookies-from-browser", browser);
+    }
+
+    const proc = spawn("yt-dlp", args);
     const pid = proc.pid;
     let stderr = "";
 
@@ -41,16 +36,60 @@ export function downloadAudio(url) {
 
     proc.on("close", (code) => {
       if (code !== 0) {
-        reject(
-          new Error(`yt-dlp falló con código ${code}: ${stderr.slice(-500)}`),
-        );
+        reject({
+          code,
+          stderr: stderr.slice(-500),
+          browser,
+        });
         return;
       }
-      resolve({ pid, oggPath });
+      resolve({ pid, oggPath: `${outTemplate}.ogg` });
     });
 
     proc.on("error", (err) => {
-      reject(new Error(`No se pudo iniciar yt-dlp: ${err.message}`));
+      reject({
+        code: -1,
+        stderr: err.message,
+        browser,
+      });
     });
   });
+}
+
+/**
+ * Descarga solo el audio de una URL (YouTube/TikTok/Instagram)
+ * usando yt-dlp y lo convierte a OGG Opus 64kbps 16kHz mono.
+ * Intenta múltiples navegadores automáticamente para obtener cookies.
+ *
+ * @param {string} url - URL del video
+ * @returns {Promise<{ pid: number, oggPath: string }>}
+ */
+export async function downloadAudio(url) {
+  const id = randomUUID();
+  const outTemplate = `/tmp/${id}`;
+  const browsers = [
+    "chrome",
+    "firefox",
+    "edge",
+    "brave",
+    "safari",
+    "opera",
+    "vivaldi",
+  ];
+
+  let lastError = null;
+
+  for (const browser of browsers) {
+    try {
+      const result = await tryDownloadWithBrowser(url, outTemplate, browser);
+      return result;
+    } catch (err) {
+      lastError = err;
+      continue;
+    }
+  }
+
+  throw new Error(
+    `yt-dlp falló con todos los navegadores. Último error (${lastError.browser}): ${lastError.stderr}`,
+  );
 }
