@@ -79,6 +79,7 @@ export async function downloadAudio(url) {
 
   let lastError = null;
 
+  // Intentar con cada navegador
   for (const browser of browsers) {
     try {
       const result = await tryDownloadWithBrowser(url, outTemplate, browser);
@@ -89,7 +90,14 @@ export async function downloadAudio(url) {
     }
   }
 
-  throw new Error(
-    `yt-dlp falló con todos los navegadores. Último error (${lastError.browser}): ${lastError.stderr}`,
-  );
+  // Si todos los navegadores fallan, intentar sin cookies como último recurso
+  try {
+    const result = await tryDownloadWithBrowser(url, outTemplate, null);
+    return result;
+  } catch (err) {
+    // Si incluso sin cookies falla, lanzar error detallado
+    throw new Error(
+      `yt-dlp falló. Error sin cookies: ${err.stderr}. Último navegador intentado (${lastError.browser}): ${lastError.stderr}`,
+    );
+  }
 }
