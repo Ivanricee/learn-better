@@ -23,8 +23,10 @@ export function useFileUpload(categoryId: string) {
         url: file.sourceUrl,
       });
 
-      console.log(`✅ [UploadModal] Resource creado en Zustand:`, resourceId);
-      updateResourceStatus(resourceId, "uploading");
+      console.log(
+        `✅ [UploadModal] Resource creado con estado 'uploading':`,
+        resourceId,
+      );
 
       const formData = new FormData();
       formData.append("categoryId", categoryId);
@@ -45,11 +47,15 @@ export function useFileUpload(categoryId: string) {
       }
 
       try {
+        const uploadStartTime = Date.now();
         console.log(`📤 [UploadModal] Enviando a /api/upload...`);
         const response = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         });
+        console.log(
+          `⏱️ [UploadModal] Upload completado en ${Date.now() - uploadStartTime}ms`,
+        );
 
         console.log(`📥 [UploadModal] Respuesta de /api/upload:`, {
           ok: response.ok,
@@ -71,6 +77,9 @@ export function useFileUpload(categoryId: string) {
         console.log(`✅ [UploadModal] Job creado:`, responseData);
 
         const { jobId } = responseData;
+        console.log(
+          `🔄 [UploadModal] Cambiando estado de 'uploading' → 'queued' para resource ${resourceId}`,
+        );
         updateResourceJobId(resourceId, jobId, "queued");
 
         console.log(`🔄 [UploadModal] Iniciando polling para job:`, jobId);
