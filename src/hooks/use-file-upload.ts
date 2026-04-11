@@ -20,9 +20,11 @@ export function useFileUpload(categoryId: string) {
         categoryId: categoryId,
         name: file.name,
         type: file.type,
+        url: file.sourceUrl,
       });
 
       console.log(`✅ [UploadModal] Resource creado en Zustand:`, resourceId);
+      updateResourceStatus(resourceId, "uploading");
 
       const formData = new FormData();
       formData.append("categoryId", categoryId);
@@ -72,6 +74,8 @@ export function useFileUpload(categoryId: string) {
         updateResourceJobId(resourceId, jobId, "queued");
 
         console.log(`🔄 [UploadModal] Iniciando polling para job:`, jobId);
+
+        // Iniciar polling sin bloquear (fire and forget)
         pollJobStatus(jobId, resourceId);
       } catch (error) {
         console.error(`❌ [UploadModal] Error subiendo archivo:`, error);
