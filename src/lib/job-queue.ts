@@ -3,11 +3,20 @@ import PgBoss from "pg-boss";
 // Usar variable global para persistir pg-boss entre hot reloads de Next.js
 declare global {
   var pgBossInstance: PgBoss | undefined;
+  var pgBossInstanceCount: number;
 }
 
 export async function getJobQueue(): Promise<PgBoss> {
   if (!global.pgBossInstance) {
-    console.log("🔧 [JobQueue] Inicializando pg-boss (modo cliente)...");
+    global.pgBossInstanceCount = (global.pgBossInstanceCount || 0) + 1;
+    console.log(
+      `🔧 [JobQueue] Inicializando pg-boss (modo cliente)... INSTANCIA #${global.pgBossInstanceCount}`,
+    );
+    if (global.pgBossInstanceCount > 3) {
+      console.warn(
+        `⚠️ [JobQueue] ADVERTENCIA: Se han creado ${global.pgBossInstanceCount} instancias. Posible memory leak.`,
+      );
+    }
     console.log(
       `🔍 [DEBUG] DATABASE_URL configurada: ${process.env.DATABASE_URL ? "SÍ" : "NO"}`,
     );
