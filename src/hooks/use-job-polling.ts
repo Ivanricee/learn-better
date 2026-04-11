@@ -52,11 +52,16 @@ export function useJobPolling() {
 
           updateResourceProgress(resourceId, job.progress || 0);
           if (job.step) {
+            console.log(
+              `🔄 [Polling] Actualizando step: ${job.step} (resource: ${resourceId})`,
+            );
             updateResourceStep(resourceId, job.step);
           }
 
           if (job.status === "done") {
-            console.log(`✅ [Polling] Job completado, deteniendo polling`);
+            console.log(
+              `✅ [Polling] Job completado, deteniendo polling (resource: ${resourceId})`,
+            );
             updateResourceStatus(resourceId, "done");
             clearInterval(interval);
             activeIntervalsRef.current.delete(interval);
@@ -72,12 +77,12 @@ export function useJobPolling() {
             activeIntervalsRef.current.delete(interval);
           } else if (job.status === "processing") {
             console.log(
-              `⚙️ [Polling] Job en procesamiento, actualizando UI...`,
+              `⚙️ [Polling] Cambiando a 'processing' (resource: ${resourceId}, step: ${job.step || "sin step"})`,
             );
             updateResourceStatus(resourceId, "processing");
           } else if (job.status === "pending" || job.status === "queued") {
             console.log(
-              `⏳ [Polling] Job en cola (${job.status}), actualizando UI...`,
+              `⏳ [Polling] Manteniendo en cola '${job.status}' (resource: ${resourceId})`,
             );
             updateResourceStatus(resourceId, job.status);
           } else {
