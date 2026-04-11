@@ -1,6 +1,6 @@
 import type { StateCreator } from "zustand";
 
-import type { Resource, ResourceStatus } from "../../types";
+import type { Resource, ResourceStatus, JobStep } from "../../types";
 
 export type ResourcesSlice = {
   resources: Resource[];
@@ -9,7 +9,12 @@ export type ResourcesSlice = {
   ) => string;
   updateResourceStatus: (id: string, status: ResourceStatus) => void;
   updateResourceProgress: (id: string, progress: number) => void;
-  updateResourceJobId: (id: string, jobId: string) => void;
+  updateResourceStep: (id: string, step: JobStep) => void;
+  updateResourceJobId: (
+    id: string,
+    jobId: string,
+    status: ResourceStatus,
+  ) => void;
   updateResourceError: (id: string, error_message: string) => void;
   removeResource: (id: string) => void;
   getResourcesByCategory: (categoryId: string) => Resource[];
@@ -80,7 +85,7 @@ export const createResourcesSlice: StateCreator<
     const newResource: Resource = {
       ...resource,
       id,
-      status: "queued",
+      status: "uploading",
       progress: 0,
       createdAt: new Date(),
     };
@@ -112,10 +117,17 @@ export const createResourcesSlice: StateCreator<
       ),
     })),
 
-  updateResourceJobId: (id, jobId) =>
+  updateResourceStep: (id, step) =>
     set((state) => ({
       resources: state.resources.map((resource) =>
-        resource.id === id ? { ...resource, jobId } : resource,
+        resource.id === id ? { ...resource, step } : resource,
+      ),
+    })),
+
+  updateResourceJobId: (id, jobId, status) =>
+    set((state) => ({
+      resources: state.resources.map((resource) =>
+        resource.id === id ? { ...resource, jobId, status } : resource,
       ),
     })),
 
@@ -161,6 +173,7 @@ export const createResourcesSlice: StateCreator<
           name: r.name,
           type: r.type,
           status: r.job.status,
+          step: r.job.step ?? undefined,
           progress: r.job.progress ?? 0,
           url: r.source_url ?? undefined,
           error_message: r.job.error_message ?? undefined,
