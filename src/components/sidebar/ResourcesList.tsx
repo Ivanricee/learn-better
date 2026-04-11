@@ -60,6 +60,7 @@ function getStatusIndicator(
   status: ResourceStatus,
   progress?: number,
   error_message?: string,
+  step?: string,
 ) {
   switch (status) {
     case "queued":
@@ -72,10 +73,20 @@ function getStatusIndicator(
       );
     case "uploading":
     case "processing":
+      const stepLabels: Record<string, string> = {
+        downloading: "Descargando",
+        converting: "Convirtiendo",
+        transcribing: "Transcribiendo",
+        extracting: "Extrayendo texto",
+        vectorizing: "Vectorizando",
+        generating_temario: "Generando temario",
+        done: "Finalizando",
+      };
+      const stepLabel = step ? stepLabels[step] || "Procesando" : "Procesando";
       return (
         <div className="flex items-center gap-1.5 text-[var(--tutor)]">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          <span className="text-xs">Procesando...</span>
+          <span className="text-xs">{stepLabel}...</span>
         </div>
       );
     case "done":
@@ -140,13 +151,13 @@ function ResourceItem({ resource }: { resource: Resource }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  console.log("� [ResourceItem] Renderizando resource:", {
+  /* console.log("� [ResourceItem] Renderizando resource:", {
     id: resource.id,
     name: resource.name,
     type: resource.type,
     status: resource.status,
     progress: resource.progress,
-  });
+  });*/
 
   const isActive =
     resource.status === "uploading" || resource.status === "processing";
@@ -207,6 +218,7 @@ function ResourceItem({ resource }: { resource: Resource }) {
           resource.status,
           resource.progress,
           resource.error_message,
+          resource.step,
         )}
 
         {/* Progress bar for active uploads */}
