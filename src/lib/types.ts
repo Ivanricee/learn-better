@@ -148,6 +148,7 @@ export interface Resource {
   name: string;
   type: ResourceType;
   status: ResourceStatus;
+  step?: JobStep; // Paso actual del procesamiento
   progress: number; // 0-100
   url?: string;
   error_message?: string; // Mensaje de error si status=error
