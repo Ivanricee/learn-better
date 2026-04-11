@@ -62,6 +62,7 @@ export function UploadUrlInput({
         </div>
 
         <Button
+          type="button"
           variant="secondary"
           onClick={onSubmitUrl}
           className="h-10 rounded-xl px-4 text-sm"
