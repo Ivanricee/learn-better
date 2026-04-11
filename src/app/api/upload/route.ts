@@ -67,8 +67,12 @@ function getUrlType(url: string): string | null {
 
 // POST /api/upload - Acepta multipart/form-data con file o sourceUrl + categoryId + name
 export async function POST(request: NextRequest) {
+  const t0 = Date.now();
+  const elapsed = (label: string) =>
+    console.log(`⏱️ [upload] ${label}: +${Date.now() - t0}ms`);
   try {
     const formData = await request.formData();
+    elapsed("formData parsed");
     const file = formData.get("file") as File | null;
     const categoryId = formData.get("categoryId") as string | null;
     const sourceUrl = formData.get("sourceUrl") as string | null;
@@ -82,11 +86,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar que la categoría existe
+    // Verificar que la categoría existe (tambien borrar en cascada.)
     const categoryExists = await query(
       `SELECT id FROM categories WHERE id = $1`,
       [categoryId],
     );
+    elapsed("category check");
     if (categoryExists.rows.length === 0) {
       return NextResponse.json(
         { error: "Categoría no encontrada" },
@@ -139,6 +144,7 @@ export async function POST(request: NextRequest) {
         ],
       );
       fileId = fileResult.rows[0].id;
+      elapsed("file saved + DB insert");
     }
     // Caso 2: URL (YouTube, TikTok, Instagram)
     else if (sourceUrl) {
@@ -168,6 +174,7 @@ export async function POST(request: NextRequest) {
         [categoryId, fileName, fileType, sourceUrl],
       );
       fileId = fileResult.rows[0].id;
+      elapsed("URL DB insert");
     } else {
       return NextResponse.json(
         { error: "Se requiere un archivo (file) o una URL (sourceUrl)" },
@@ -184,6 +191,7 @@ export async function POST(request: NextRequest) {
       [fileId, categoryId],
     );
     const jobId = jobResult.rows[0].id;
+    elapsed("job DB insert");
 
     // Encolar en pg-boss — teamConcurrency:1 garantiza procesamiento secuencial
     await enqueueFileProcessing({
@@ -193,6 +201,7 @@ export async function POST(request: NextRequest) {
       fileType,
       testErrorType: testErrorType || undefined,
     });
+    elapsed("pg-boss enqueue");
 
     return NextResponse.json(
       { jobId, fileId, fileName, fileType },
