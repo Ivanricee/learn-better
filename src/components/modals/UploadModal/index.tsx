@@ -156,15 +156,17 @@ export function UploadModal({ isOpen, onClose, categoryId }: UploadModalProps) {
     setIsAdding(true);
 
     const filesToUpload = [...pendingFiles];
-
-    setLeftPanelTab("recursos");
     setPendingFiles([]);
 
-    await uploadMultipleFiles(filesToUpload);
+    // Cerrar modal y cambiar a tab recursos ANTES de esperar
+    setLeftPanelTab("recursos");
     onClose();
     console.log("false adding");
 
     setIsAdding(false);
+
+    // Subir archivos en background (no bloqueante)
+    uploadMultipleFiles(filesToUpload);
   };
 
   return (
