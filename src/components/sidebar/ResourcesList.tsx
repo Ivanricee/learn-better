@@ -72,6 +72,12 @@ function getStatusIndicator(
         </div>
       );
     case "uploading":
+      return (
+        <div className="flex items-center gap-1.5 text-[var(--tutor)]">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <span className="text-xs">Subiendo...</span>
+        </div>
+      );
     case "processing":
       const stepLabels: Record<string, string> = {
         downloading: "Descargando",
