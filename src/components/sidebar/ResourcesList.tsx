@@ -66,7 +66,12 @@ function getStatusIndicator(
 ) {
   const statusIndicator: Record<ResourceStatus, () => React.ReactNode | null> =
     {
-      queued: () => null,
+      queued: () => (
+        <div className="flex items-center gap-1.5 text-foreground-tertiary">
+          <Clock className="w-3.5 h-3.5" />
+          <span className="text-xs">En cola</span>
+        </div>
+      ),
       pending: () => (
         <div className="flex items-center gap-1.5 text-foreground-tertiary">
           <Clock className="w-3.5 h-3.5" />
