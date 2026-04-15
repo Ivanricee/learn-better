@@ -1,4 +1,3 @@
-import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import pkg from "pg";
@@ -43,43 +42,48 @@ export async function vectorizeTranscription({
     outputDimensionality: 768, //not working
   });
 
-  const config = {
-    postgresConnectionOptions: {
-      connectionString: process.env.DATABASE_URL,
-    },
-    tableName: "documents",
-    columns: {
-      idColumnName: "id",
-      vectorColumnName: "embedding",
-      contentColumnName: "content",
-      metadataColumnName: "metadata",
-    },
-  };
+  // Generar embeddings para todos los segmentos
+  const texts = validSegments.map((seg) => seg.text.trim());
+  const embeddingVectors = await embeddings.embedDocuments(texts);
 
-  const vectorStore = await PGVectorStore.initialize(embeddings, config);
+  // Preparar arrays para INSERT masivo
+  const contents = [];
+  const embeddingsArray = [];
+  const metadataArray = [];
 
-  // Construir documentos: un documento por segmento válido
-  // Incluir file_id, category_id y source_url directamente en metadata
-  const documents = validSegments.map((seg, i) => ({
-    pageContent: seg.text.trim(),
-    metadata: {
-      file_id: fileId,
-      category_id: categoryId,
-      source_url: sourceUrl || null,
-      segment_start: seg.start,
-      segment_end: seg.end,
-      chunk_index: i,
-    },
-  }));
+  for (let i = 0; i < validSegments.length; i++) {
+    const seg = validSegments[i];
+    contents.push(texts[i]);
+    embeddingsArray.push(JSON.stringify(embeddingVectors[i]));
+    metadataArray.push(
+      JSON.stringify({
+        file_id: fileId,
+        category_id: categoryId,
+        source_url: sourceUrl || null,
+        segment_start: seg.start,
+        segment_end: seg.end,
+        chunk_index: i,
+      }),
+    );
+  }
 
-  // Insertar documentos con metadata completo
-  await vectorStore.addDocuments(documents);
+  // INSERT masivo usando UNNEST - 1 sola query en lugar de N queries
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  try {
+    await pool.query(
+      `
+      INSERT INTO documents (content, embedding, metadata)
+      SELECT * FROM UNNEST($1::text[], $2::vector[], $3::jsonb[])
+      `,
+      [contents, embeddingsArray, metadataArray],
+    );
 
-  console.log(
-    `✅ [Vectorize] ${documents.length} segmentos vectorizados para file_id=${fileId}`,
-  );
-
-  await vectorStore.end();
+    console.log(
+      `✅ [Vectorize] ${validSegments.length} segmentos vectorizados para file_id=${fileId} (INSERT masivo)`,
+    );
+  } finally {
+    await pool.end();
+  }
 }
 
 /**
@@ -124,36 +128,42 @@ export async function vectorizeText({
     outputDimensionality: 768,
   });
 
-  const config = {
-    postgresConnectionOptions: {
-      connectionString: process.env.DATABASE_URL,
-    },
-    tableName: "documents",
-    columns: {
-      idColumnName: "id",
-      vectorColumnName: "embedding",
-      contentColumnName: "content",
-      metadataColumnName: "metadata",
-    },
-  };
+  // Generar embeddings para todos los chunks
+  const embeddingVectors = await embeddings.embedDocuments(chunks);
 
-  const vectorStore = await PGVectorStore.initialize(embeddings, config);
+  // Preparar arrays para INSERT masivo
+  const contents = [];
+  const embeddingsArray = [];
+  const metadataArray = [];
 
-  const documents = chunks.map((chunk, i) => ({
-    pageContent: chunk,
-    metadata: {
-      file_id: fileId,
-      category_id: categoryId,
-      source_url: null,
-      chunk_index: i,
-    },
-  }));
+  for (let i = 0; i < chunks.length; i++) {
+    contents.push(chunks[i]);
+    embeddingsArray.push(JSON.stringify(embeddingVectors[i]));
+    metadataArray.push(
+      JSON.stringify({
+        file_id: fileId,
+        category_id: categoryId,
+        source_url: null,
+        chunk_index: i,
+      }),
+    );
+  }
 
-  await vectorStore.addDocuments(documents);
+  // INSERT masivo usando UNNEST - 1 sola query en lugar de N queries
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  try {
+    await pool.query(
+      `
+      INSERT INTO documents (content, embedding, metadata)
+      SELECT * FROM UNNEST($1::text[], $2::vector[], $3::jsonb[])
+      `,
+      [contents, embeddingsArray, metadataArray],
+    );
 
-  console.log(
-    `✅ [Vectorize] ${chunks.length} chunks vectorizados para file_id=${fileId}`,
-  );
-
-  await vectorStore.end();
+    console.log(
+      `✅ [Vectorize] ${chunks.length} chunks vectorizados para file_id=${fileId} (INSERT masivo)`,
+    );
+  } finally {
+    await pool.end();
+  }
 }
